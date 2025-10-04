@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-module While where
+module HaskellUtils.While where
 
 while :: (a -> Bool) -> (a -> a) -> a -> a
 while p f x = if p x then while p f (f x) else x

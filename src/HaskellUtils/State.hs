@@ -3,12 +3,12 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
-module State (MonadState, get, put, gets, modify, evalState, evalValue, State, runState, StateT, runStateT) where
+module HaskellUtils.State (MonadState, get, put, gets, modify, evalState, evalValue, State, runState, StateT, runStateT) where
 
 import Data.Bifunctor
 
-import Transformer
-import Environment
+import HaskellUtils.Transformer
+import HaskellUtils.Environment
 
 class Monad m => MonadState s m | m -> s where
   get :: m s

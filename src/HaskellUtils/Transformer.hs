@@ -1,6 +1,6 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE QuantifiedConstraints #-}
-module Transformer where
+module HaskellUtils.Transformer where
 
 class MonadT t where
   lift :: Monad m => m a -> t m a

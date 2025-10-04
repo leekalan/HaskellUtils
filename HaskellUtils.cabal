@@ -59,12 +59,12 @@ library
 
     -- Modules exported by the library.
     exposed-modules:
-        Environment
-        MaybeT
-        Reader
-        State
-        Transformer
-        While
+        HaskellUtils.Environment
+        HaskellUtils.MaybeT
+        HaskellUtils.Reader
+        HaskellUtils.State
+        HaskellUtils.Transformer
+        HaskellUtils.While
 
     -- Modules included in this library but not exported.
     -- other-modules:

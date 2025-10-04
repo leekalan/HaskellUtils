@@ -2,10 +2,10 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
-module Reader (Reader, runReader, ReaderT, runReaderT) where
+module HaskellUtils.Reader (Reader, runReader, ReaderT, runReaderT) where
 
-import Transformer
-import Environment
+import HaskellUtils.Transformer
+import HaskellUtils.Environment
 
 class Monad m => MonadReader r m | m -> r where
   ask :: m r

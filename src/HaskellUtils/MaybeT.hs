@@ -1,9 +1,9 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-module MaybeT (MaybeT, runMaybeT, justT, nothingT, maybeT) where
+module HaskellUtils.MaybeT (MaybeT, runMaybeT, justT, nothingT, maybeT) where
 
-import Transformer
+import HaskellUtils.Transformer
 
 newtype MaybeT m a = MaybeTCons { runMaybeT :: m (Maybe a) }
 

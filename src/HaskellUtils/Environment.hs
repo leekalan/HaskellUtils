@@ -1,7 +1,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Environment where
+module HaskellUtils.Environment where
 
-import Transformer
+import HaskellUtils.Transformer
 
 class Monad (m r) => MonadEnv r m where
   getEnv :: m r r
