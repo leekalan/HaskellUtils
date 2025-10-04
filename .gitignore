@@ -1,0 +1,18 @@
+# Build artifacts
+dist/
+dist-newstyle/
+.stack-work/
+cabal-dev/
+
+# Object and interface files
+*.o
+*.hi
+*.chi
+*.hie
+*.dyn_o
+*.dyn_hi
+
+# Temporary and log files
+*.log
+.hpc/
+.ghc.environment.*
