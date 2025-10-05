@@ -60,7 +60,9 @@ library
     -- Modules exported by the library.
     exposed-modules:
         HaskellUtils.Environment
-        HaskellUtils.MaybeT
+        HaskellUtils.Maybe
+        HaskellUtils.Either
+        HaskellUtils.Optionals
         HaskellUtils.Reader
         HaskellUtils.State
         HaskellUtils.Transformer
