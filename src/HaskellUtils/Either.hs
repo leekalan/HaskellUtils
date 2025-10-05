@@ -3,7 +3,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 module HaskellUtils.Either (
-  EitherT, runEitherT, leftT, rightT, eitherT, liftLeft,
+  EitherT(EitherT), runEitherT, leftT, rightT, eitherT, liftLeft,
   mapLeft, mapRight, mapLeftT, mapRightT,
   (~>>=)
 ) where

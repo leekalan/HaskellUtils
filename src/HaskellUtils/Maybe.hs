@@ -2,8 +2,8 @@
 {-# LANGUAGE InstanceSigs #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE UndecidableInstances #-}
-module HaskellUtils.MaybeT (
-  MaybeT, runMaybeT, justT, nothingT, maybeT,
+module HaskellUtils.Maybe (
+  MaybeT(MaybeT), runMaybeT, justT, nothingT, maybeT,
   onNothingT, (!>>=)
 ) where
 

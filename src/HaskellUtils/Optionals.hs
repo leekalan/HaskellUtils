@@ -1,7 +1,11 @@
 module HaskellUtils.Optionals (
   mapNothing, mapNothingT,
-  leftToMaybe, rightToMaybe, leftToMaybeT
+  leftToMaybe, rightToMaybe, leftToMaybeT, rightToMaybeT
 ) where
+
+import HaskellUtils.Maybe
+import HaskellUtils.Either
+import HaskellUtils.Transformer
 
 mapNothing :: e -> Maybe a -> Either e a
 mapNothing e Nothing = Left e
@@ -22,8 +26,8 @@ rightToMaybe :: Either e a -> Maybe a
 rightToMaybe (Right a) = Just a
 rightToMaybe _ = Nothing
 
-leftToMaybeT :: EitherT e m a -> MaybeT m e
+leftToMaybeT :: Functor m => EitherT e m a -> MaybeT m e
 leftToMaybeT (EitherT ma) = MaybeT $ fmap leftToMaybe ma
 
-rightToMaybeT :: EitherT e m a -> MaybeT m a
+rightToMaybeT :: Functor m => EitherT e m a -> MaybeT m a
 rightToMaybeT (EitherT ma) = MaybeT $ fmap rightToMaybe ma
