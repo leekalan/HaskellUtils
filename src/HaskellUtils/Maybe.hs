@@ -4,7 +4,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module HaskellUtils.Maybe (
   MaybeT(MaybeT), runMaybeT, justT, nothingT, maybeT,
-  onNothingT, (!>>=)
+  liftNothing, onNothingT, (!>>=)
 ) where
 
 import GHC.Base (Alternative(..))
@@ -78,6 +78,11 @@ maybeT onNothing onJust (MaybeT ma) = ma >>= maybe onNothing onJust
 instance MonadT MaybeT where
   lift :: Monad m => m a -> MaybeT m a
   lift m = MaybeT $ fmap Just m
+
+liftNothing :: Monad m => m () -> MaybeT m a
+liftNothing m = MaybeT $ do
+  m
+  return Nothing
 
 instance MonadE Maybe MaybeT where
   elev :: Monad n => Maybe a -> MaybeT n a
