@@ -1,39 +1,78 @@
-{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
-module HaskellUtils.State (MonadState, get, put, gets, modify, evalState, evalValue, State, runState, StateT, runStateT) where
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# LANGUAGE RankNTypes #-}
+module HaskellUtils.State (
+  StateMonad, sm_put, sm_runState, sm_evalState,
+  put, modify, runState, runStateF,
+  evalState, evalStateF, evalValue, evalValueF, StateRet,
+  State, state, StateT, stateT,
+) where
 
 import Data.Bifunctor
 
 import HaskellUtils.Transformer
 import HaskellUtils.Environment
+import HaskellUtils.Reader
 
-class Monad m => MonadState s m | m -> s where
-  get :: m s
-  put :: s -> m ()
+class ReaderMonad s m => StateMonad s m where
+  sm_put :: s -> m ()
 
-  gets :: (s -> a) -> m a
-  gets f = fmap f get
+  sm_runState :: m a -> s -> StateRet m (a, s)
+  sm_evalState :: m a -> s -> StateRet m s
 
-  modify :: (s -> s) -> m ()
-  modify f = get >>= put . f
+put :: StateMonad s m => s -> m ()
+put = sm_put
 
-newtype State s a = StateCons { runState :: s -> (a, s) }
+runState :: forall m s. StateMonad s m => forall a. m a -> s -> StateRet m (a, s)
+runState = sm_runState
 
-instance MonadState s (State s) where
-  get :: State s s
-  get = StateCons $ \s -> (s, s)
+evalState :: forall m s. StateMonad s m => forall a. m a -> s -> StateRet m s
+evalState = sm_evalState
 
-  put :: s -> State s ()
-  put s = StateCons $ const ((), s)
+modify :: forall m s. StateMonad s m => (s -> s) -> m ()
+modify f = get >>= put . f
 
-evalState :: State s a -> s -> s
-evalState (StateCons sa) = snd . sa
+runStateF :: forall m s. StateMonad s m => forall a. s -> m a -> StateRet m (a, s)
+runStateF = flip runState
 
-evalValue :: State s a -> s -> a
-evalValue (StateCons sa) = fst . sa
+evalStateF ::forall m s.  StateMonad s m => forall a. s -> m a -> StateRet m s
+evalStateF = flip evalState
+
+evalValue :: forall m s. StateMonad s m => forall a. m a -> s -> StateRet m a
+evalValue = runReader
+
+evalValueF :: forall m s. StateMonad s m => forall a. s -> m a -> StateRet m a
+evalValueF = runReaderF
+
+type StateRet m a = ReaderRet m a
+
+
+newtype State s a = StateCons { _runState :: s -> (a, s) }
+
+state :: (s -> (a, s)) -> State s a
+state = StateCons
+
+instance ReaderMonad s (State s) where
+  rm_get :: State s s
+  rm_get = StateCons $ \s -> (s, s)
+
+  rm_runReader :: State s a -> s -> a
+  rm_runReader s = fst . _runState s
+
+instance StateMonad s (State s) where
+  sm_put :: s -> State s ()
+  sm_put s = StateCons $ const ((), s)
+  
+  sm_runState :: State s a -> s -> (a, s)
+  sm_runState = _runState
+
+  sm_evalState :: State s a -> s -> s
+  sm_evalState sa = snd . _runState sa
 
 instance MonadEnv s State where
   getEnv :: State s s
@@ -72,34 +111,43 @@ instance Monad (State s) where
     in  sb s'
 
 
-newtype StateT s m a = StateTCons { runStateT :: s -> m (a, s) }
+newtype StateT s m a = StateTCons { _runStateT :: s -> m (a, s) }
 
-instance Monad m => MonadState s (StateT s m) where
-  get :: StateT s m s
-  get = StateTCons $ \s -> pure (s, s)
+stateT :: (s -> m (a, s)) -> StateT s m a
+stateT = StateTCons
 
-  put :: s -> StateT s m ()
-  put s = StateTCons $ const $ pure ((), s)
+instance Monad m => ReaderMonad s (StateT s m) where
+  type ReaderRet (StateT s m) a = m a
 
-evalStateT :: Functor m => StateT s m a -> s -> m a
-evalStateT (StateTCons sa) = fmap fst . sa
+  rm_get :: StateT s m s
+  rm_get = StateTCons $ \s -> return (s, s)
 
-evalValueT :: Functor m => StateT s m a -> s -> m a
-evalValueT (StateTCons sa) = fmap fst . sa
+  rm_runReader :: StateT s m a -> s -> m a
+  rm_runReader sa s = fst <$> _runStateT sa s
+
+instance Monad m => StateMonad s (StateT s m) where
+  sm_put :: s -> StateT s m ()
+  sm_put s = StateTCons $ const $ return ((), s)
+
+  sm_runState :: Monad m => StateT s m a -> s -> m (a, s)
+  sm_runState = _runStateT
+  
+  sm_evalState :: Monad m => StateT s m a -> s -> m s
+  sm_evalState sa s = snd <$> _runStateT sa s
 
 instance MonadEnvT s StateT where
   getEnvT :: Monad m => StateT s m s
   getEnvT = get
 
   runWithEnvT :: Monad m => StateT s m a -> s -> m a
-  runWithEnvT = evalStateT
+  runWithEnvT = evalValue
 
 instance MonadEnvMutT s StateT where
   setEnvT :: Monad m => s -> StateT s m ()
   setEnvT = put
 
   runWithEnvMutT :: Monad m => StateT s m a -> s -> m (a, s)
-  runWithEnvMutT = runStateT
+  runWithEnvMutT = runState
 
 instance Functor m => Functor (StateT s m) where
   fmap :: (a -> b) -> StateT s m a -> StateT s m b
@@ -120,7 +168,7 @@ instance Monad m => Monad (StateT s m) where
   (>>=) :: StateT s m a -> (a -> StateT s m b) -> StateT s m b
   (>>=) (StateTCons sa) f = StateTCons $ \s -> do
     (a, s') <- sa s
-    runStateT (f a) s'
+    runState (f a) s'
 
 
 instance MonadT (StateT s) where

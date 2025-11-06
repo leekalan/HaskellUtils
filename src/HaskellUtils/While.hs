@@ -19,3 +19,22 @@ whileM p f = do
     na' <- whileM p f
     return $ na <> na'
   else return mempty
+
+loopUntil :: (a -> Either a b) -> a -> b
+loopUntil f x = case f x of
+  Left a -> loopUntil f a
+  Right b -> b
+
+loopUntilM_ :: Monad m => m (Maybe a) -> m a
+loopUntilM_ f = do
+  x <- f
+  case x of
+    Just a -> return a
+    Nothing -> loopUntilM_ f
+
+loopUntilM :: Monad m => (a -> m (Either a b)) -> a -> m b
+loopUntilM f g = do
+  x <- f g
+  case x of
+    Left a -> loopUntilM f a
+    Right b -> return b

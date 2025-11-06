@@ -1,27 +1,54 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE RankNTypes #-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
-module HaskellUtils.Reader (Reader, runReader, ReaderT, runReaderT) where
+module HaskellUtils.Reader (
+  ReaderMonad, rm_get, rm_runReader,
+  get, gets, runReader, runReaderF, ReaderRet,
+  Reader, reader, ReaderT, readerT
+) where
 
 import HaskellUtils.Transformer
 import HaskellUtils.Environment
 
-class Monad m => MonadReader r m | m -> r where
-  ask :: m r
+class Monad m => ReaderMonad r m | m -> r where
+  type ReaderRet m a
+  type ReaderRet m a = a
 
-  asks :: (r -> a) -> m a
-  asks = (<$> ask)
+  rm_get :: m r
+  rm_runReader :: m a -> r -> ReaderRet m a
 
-newtype Reader r a = ReaderCons { runReader :: r -> a }
+get :: forall m r. ReaderMonad r m => m r
+get = rm_get
 
-instance MonadReader r (Reader r) where
-  ask :: Reader r r
-  ask = ReaderCons id
+runReader :: forall m r. ReaderMonad r m => forall a. m a -> r -> ReaderRet m a
+runReader = rm_runReader
+
+gets :: forall m r. ReaderMonad r m => forall a. (r -> a) -> m a
+gets = (<$> get)
+
+runReaderF :: forall m r. ReaderMonad r m => forall a. r -> m a -> ReaderRet m a
+runReaderF = flip runReader
+
+
+newtype Reader r a = ReaderCons { _runReader :: r -> a }
+
+reader :: (r -> a) -> Reader r a
+reader = ReaderCons
+
+instance ReaderMonad r (Reader r) where
+  rm_get :: Reader r r
+  rm_get = ReaderCons id
+  
+  rm_runReader :: Reader r a -> r -> ReaderRet (Reader r) a
+  rm_runReader = _runReader
 
 instance MonadEnv r Reader where
   getEnv :: Reader r r
-  getEnv = ask
+  getEnv = get
 
   runWithEnv :: Reader r a -> r -> a
   runWithEnv = runReader
@@ -42,18 +69,27 @@ instance Monad (Reader r) where
   (>>=) (ReaderCons ra) f = ReaderCons $ \r -> runReader (f $ ra r) r
 
 
-newtype ReaderT r m a = ReaderTCons { runReaderT :: r -> m a }
+newtype ReaderT r m a = ReaderTCons { _runReaderT :: r -> m a }
 
-instance Monad m => MonadReader r (ReaderT r m) where
-  ask :: Monad m => ReaderT r m r
-  ask = ReaderTCons return
+readerT :: (r -> m a) -> ReaderT r m a
+readerT = ReaderTCons
+
+instance Monad m => ReaderMonad r (ReaderT r m) where
+  type ReaderRet (ReaderT r m) a = m a
+
+  rm_get :: Monad m => ReaderT r m r
+  rm_get = ReaderTCons return
+
+  rm_runReader :: ReaderT r m a -> r -> ReaderRet (ReaderT r m) a
+  rm_runReader = _runReaderT
+
 
 instance MonadEnvT r ReaderT where
   getEnvT :: Monad m => ReaderT r m r
-  getEnvT = ask
+  getEnvT = get
 
   runWithEnvT :: Monad m => ReaderT r m a -> r -> m a
-  runWithEnvT = runReaderT
+  runWithEnvT = runReader
 
 instance Functor m => Functor (ReaderT r m) where
   fmap :: (a -> b) -> ReaderT r m a -> ReaderT r m b
@@ -73,7 +109,7 @@ instance Monad m => Monad (ReaderT r m) where
   (>>=) :: ReaderT r m a -> (a -> ReaderT r m b) -> ReaderT r m b
   (>>=) (ReaderTCons ra) f = ReaderTCons $ \r -> do
     a <- ra r
-    runReaderT (f a) r
+    runReader (f a) r
 
 
 instance MonadT (ReaderT r) where
