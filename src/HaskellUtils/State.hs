@@ -1,11 +1,8 @@
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE
+  TupleSections, FlexibleInstances, InstanceSigs,
+  MultiParamTypeClasses, TypeFamilies, RankNTypes
+#-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# LANGUAGE RankNTypes #-}
 module HaskellUtils.State (
   StateMonad, sm_put, sm_runState, sm_evalState,
   put, modify, runState, runStateF,

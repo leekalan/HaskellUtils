@@ -1,7 +1,5 @@
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE UndecidableInstances, InstanceSigs, MultiParamTypeClasses #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 module HaskellUtils.Either (
   EitherT(EitherT), runEitherT, leftT, rightT, eitherT, liftLeft,
   mapLeft, mapRight, mapLeftT, mapRightT,

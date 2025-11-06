@@ -1,5 +1,4 @@
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE FunctionalDependencies, QuantifiedConstraints #-}
 module HaskellUtils.Transformer where
 
 class (forall m. Monad m => Monad (t m)) => MonadT t where

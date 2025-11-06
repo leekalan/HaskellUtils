@@ -1,9 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE QuantifiedConstraints #-}
-{-# OPTIONS_GHC -Wno-partial-type-signatures #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE FlexibleContexts, TypeApplications #-}
 module HaskellUtils.Test where
 
 import HaskellUtils.State

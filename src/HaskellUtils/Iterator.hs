@@ -1,5 +1,4 @@
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE InstanceSigs, FlexibleContexts #-}
 module HaskellUtils.Iterator where
 
 import HaskellUtils.State

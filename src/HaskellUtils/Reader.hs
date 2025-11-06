@@ -1,9 +1,7 @@
-{-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE
+  FunctionalDependencies, FlexibleInstances,
+  InstanceSigs, TypeFamilies, RankNTypes
+#-}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 module HaskellUtils.Reader (
   ReaderMonad, rm_get, rm_runReader,

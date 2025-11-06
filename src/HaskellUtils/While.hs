@@ -1,5 +1,6 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 module HaskellUtils.While where
+
+import Control.Monad ( when )
 
 while :: (a -> Bool) -> (a -> a) -> a -> a
 while p f x = if p x then while p f (f x) else x
@@ -7,9 +8,7 @@ while p f x = if p x then while p f (f x) else x
 whileM_ :: Monad m => m Bool -> m () -> m ()
 whileM_ p f = do
   b <- p
-  {-# HLINT ignore "Use when" #-}
-  if b then f >> whileM_ p f
-  else return ()
+  when b $ f >> whileM_ p f
 
 whileM :: (Monad m, Monoid a) => m Bool -> m a -> m a
 whileM p f = do

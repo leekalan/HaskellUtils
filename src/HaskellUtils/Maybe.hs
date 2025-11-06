@@ -1,7 +1,5 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE InstanceSigs #-}
+{-# LANGUAGE MultiParamTypeClasses, InstanceSigs, UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# LANGUAGE UndecidableInstances #-}
 module HaskellUtils.Maybe (
   MaybeT(MaybeT), runMaybeT, justT, nothingT, maybeT,
   liftNothing, onNothingT, (!>>=)
