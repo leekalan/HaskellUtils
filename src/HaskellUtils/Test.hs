@@ -24,7 +24,7 @@ testRead = do
 testCont :: Int -> IO ()
 testCont v = do
   print $ catch $ do
-    vp <- if v < 0 then throwAny' "negative" else return v
+    vp <- if v < 0 then throw' "negative" else return v
     return ("postive " ++ show vp)
 
 
@@ -48,10 +48,10 @@ find63Simple n = do
   -- incrementing counter
   return $ n + 1
 
---        Loop  Return    Inc
---         |      |        |
---         v      v        v
-find63 :: LoopT String IO Int
+--        Loop     Return Inc
+--         |         |     |
+--         v         v     v
+find63 :: LoopT IO String Int
 find63 n = do
   -- inner scope that catches the throw
   string <- catchL $ do
@@ -70,3 +70,13 @@ find63 n = do
 testFind63 :: Int -> IO ()
 testFind63 n = do
   print =<< loopT find63 n
+
+
+data Tree = Leaf (Int, String) | Branch Tree Tree
+
+treeFind :: Int -> Tree -> Maybe String
+treeFind n t = catchMonoid $ search t
+  where
+    search :: Tree -> SegT Maybe String
+    search (Leaf (x, s)) = when (x == n) $ throw' s
+    search (Branch l r) = search l >> search r

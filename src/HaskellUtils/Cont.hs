@@ -1,18 +1,14 @@
 {-# LANGUAGE
   InstanceSigs, FlexibleInstances,  FlexibleContexts,
-  FunctionalDependencies, TypeFamilies, RankNTypes
+  FunctionalDependencies, TypeFamilies, RankNTypes,
+  ScopedTypeVariables, TypeApplications, TypeOperators
 #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE TypeOperators #-}
 module HaskellUtils.Cont (
-  Block, BlockT, Scope, ScopeT, Loop, LoopT, asCont, asContT,
+  Block, BlockT, Seg, SegT, Scope, ScopeT, Loop, LoopT, asCont, asContT,
   ContMonad, cm_cont, cm_runCont, cm_runContId,
-  cont', runCont', runContId', throwAny', throw', catch', catchM', catchL', recurse', recurseF', loop', loopF',
-  Cont, cont, runCont, runContId, throwAny, throw, catch, catchM, recurse, recurseF, loop, loopF,
-  ContT, contT, runContT, runContIdT, throwAnyT, throwT, catchT, catchL, recurseT, recurseFT, loopT, loopFT, loopState,
+  cont', runCont', runContId', throw', throwEmpty', catch', catchM', catchL', recurse', recurseF', loop', loopF',
+  Cont, cont, runCont, runContId, throw, throwEmpty, catch, catchM, recurse, recurseF, loop, loopF,
+  ContT, contT, runContT, runContIdT, throwT, throwEmptyT, catchT, catchL, catchMonoid, recurseT, recurseFT, loopT, loopFT, loopState,
 ) where
 
 import HaskellUtils.Transformer
@@ -21,11 +17,14 @@ import HaskellUtils.State
 type Block r = Cont r r
 type BlockT m r = ContT r m r
 
+type Seg r = Cont r ()
+type SegT m r = ContT r m ()
+
 type Scope r = Cont r
 type ScopeT m r = ContT r m
 
 type Loop r a = a -> Cont r a
-type LoopT r m a = a -> ContT r m a
+type LoopT m r a = a -> ContT r m a
 
 {-|
   The class describes a monad where we can pass in a continuation
@@ -49,11 +48,11 @@ runCont' = cm_runCont
 runContId' :: forall m r. ContMonad r m => m r -> ContRet m r
 runContId' = cm_runContId
 
-throwAny' :: forall m r. ContMonad r m => forall a. r -> m a
-throwAny' r = cont' $ const $ runContId' @m $ return r
+throw' :: forall m r. ContMonad r m => forall a. r -> m a
+throw' r = cont' $ const $ runContId' @m $ return r
 
-throw' :: forall m r. ContMonad r m => r -> m ()
-throw' = throwAny'
+throwEmpty' :: forall m r. ContMonad r m => r -> m ()
+throwEmpty' = throw'
 
 catch' :: forall m r. ContMonad r m => m r -> ContRet m r
 catch' = runContId'
@@ -104,11 +103,11 @@ runCont = runCont'
 runContId :: Cont r r -> r
 runContId = runContId'
 
-throwAny :: r -> Cont r a
-throwAny = throwAny'
-
-throw :: r -> Cont r ()
+throw :: r -> forall a. Cont r a
 throw = throw'
+
+throwEmpty :: r -> Cont r ()
+throwEmpty = throwEmpty'
 
 catch :: Cont r r -> r
 catch = catch'
@@ -173,17 +172,20 @@ runContT = runCont'
 runContIdT :: Monad m => ContT r m r -> m r
 runContIdT = runContId'
 
-throwAnyT :: Monad m => r -> ContT r m a
-throwAnyT = throwAny'
-
-throwT :: Monad m => r -> ContT r m ()
+throwT :: Monad m => r -> ContT r m a
 throwT = throw'
+
+throwEmptyT :: Monad m => r -> ContT r m ()
+throwEmptyT = throwEmpty'
 
 catchT :: Monad m => ContT r m r -> m r
 catchT = catch'
 
 catchL :: Monad m => ContT r m r -> ContT r' m r
 catchL = catchL'
+
+catchMonoid :: (Monad m, Monoid (m r)) => ContT r m () -> m r
+catchMonoid r = catchT (r >> lift mempty)
 
 recurseT :: Monad m => (a -> ContT r m a) -> a -> ContT r m r
 recurseT = recurse'
