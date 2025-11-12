@@ -66,10 +66,12 @@ library
         HaskellUtils.Reader
         HaskellUtils.State
         HaskellUtils.Transformer
+        HaskellUtils.FoldableT
         HaskellUtils.While
         HaskellUtils.Folds
         HaskellUtils.Iterator
         HaskellUtils.Tuple
+        HaskellUtils.Cont
 
     -- Modules included in this library but not exported.
     other-modules:

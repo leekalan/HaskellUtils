@@ -1,4 +1,7 @@
-{-# LANGUAGE UndecidableInstances, InstanceSigs, MultiParamTypeClasses #-}
+{-# LANGUAGE
+  UndecidableInstances, InstanceSigs, RankNTypes,
+  MultiParamTypeClasses, TypeFamilies
+#-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module HaskellUtils.Either (
   EitherT(EitherT), runEitherT, leftT, rightT, eitherT, liftLeft,
@@ -78,10 +81,16 @@ eitherT onLeft onRight m = do
 instance MonadT (EitherT e) where
   lift :: Monad m => m a -> EitherT e m a
   lift m = EitherT $ Right <$> m
+  
+instance MonadTMap (EitherT e) where
+  mapT :: (Monad m, Monad n) => (forall x. m x -> n x) -> EitherT e m a -> EitherT e n a
+  mapT f (EitherT ma) = EitherT $ f ma
 
 liftLeft :: Monad m => m e -> EitherT e m a
 liftLeft e = EitherT $ Left <$> e
 
-instance MonadE (Either e) (EitherT e) where
+instance MonadE (Either e) where
+  type ElevMonad (Either e) = EitherT e
+
   elev :: Monad n => Either e a -> EitherT e n a
   elev a = EitherT $ pure a

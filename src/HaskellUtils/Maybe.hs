@@ -1,4 +1,7 @@
-{-# LANGUAGE MultiParamTypeClasses, InstanceSigs, UndecidableInstances #-}
+{-# LANGUAGE
+  MultiParamTypeClasses, InstanceSigs,
+  UndecidableInstances, TypeFamilies, RankNTypes
+#-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module HaskellUtils.Maybe (
   MaybeT(MaybeT), runMaybeT, justT, nothingT, maybeT,
@@ -77,12 +80,18 @@ instance MonadT MaybeT where
   lift :: Monad m => m a -> MaybeT m a
   lift m = MaybeT $ fmap Just m
 
+instance MonadTMap MaybeT where
+  mapT :: (Monad m, Monad n) => (forall x. m x -> n x) -> MaybeT m a -> MaybeT n a
+  mapT f (MaybeT ma) = MaybeT $ f ma
+
 liftNothing :: Monad m => m () -> MaybeT m a
 liftNothing m = MaybeT $ do
   m
   return Nothing
 
-instance MonadE Maybe MaybeT where
+instance MonadE Maybe where
+  type ElevMonad Maybe = MaybeT
+
   elev :: Monad n => Maybe a -> MaybeT n a
   elev ma = MaybeT $ pure ma
 
