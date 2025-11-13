@@ -4,11 +4,11 @@
   ScopedTypeVariables, TypeApplications, TypeOperators
 #-}
 module HaskellUtils.Cont (
-  Block, BlockT, Seg, SegT, Scope, ScopeT, Loop, LoopT, asCont, asContT, asContTNest, asContTFlip,
+  Block, BlockT, Seg, SegT, Scope, ScopeT, Loop, LoopT, asCont, asContT, asContTNest, unContTNest, asContTFlip, unContTFlip,
   ContMonad, ContRet, cm_cont, cm_runCont, cm_runContId,
-  cont', runCont', runContId', throw', throwEmpty', catch', catchM', catchL', recurse', recurseF', loop', loopF',
-  Cont, cont, runCont, runContId, throw, throwEmpty, catch, catchM, recurse, recurseF, loop, loopF,
-  ContT, contT, runContT, runContIdT, throwT, throwM, throwEmptyT, throwEmptyM, catchT, catchL, catchMonoid, recurseT, recurseFT, loopT, loopFT, loopState,
+  cont', runCont', runContId', throw', throwEmpty', throwEmptyM', mapResult', catch', catchM', catchL', recurse', recurseF', loop', loopF',
+  Cont, cont, runCont, runContId, throw, throwEmpty, mapResult, catch, catchM, recurse, recurseF, loop, loopF,
+  ContT, contT, runContT, runContIdT, throwT, throwM, throwEmptyT, mapResultT, throwEmptyM, catchT, catchL, catchMonoid, recurseT, recurseFT, loopT, loopFT, loopState,
 ) where
 
 import HaskellUtils.Transformer
@@ -59,6 +59,11 @@ throwEmpty' = throw'
 
 throwEmptyM' :: forall m r. ContMonad r m => ContRet m r -> m ()
 throwEmptyM' = throwM'
+
+mapResult' :: forall m m' r r'. (ContMonad r m, ContMonad r' m')
+  => (ContRet m r -> ContRet m' r') -> (ContRet m' r' -> ContRet m r)
+  -> forall a. m a -> m' a
+mapResult' f g ra = cont' $ \k -> f $ runCont' ra $ g . k
 
 catch' :: forall m r. ContMonad r m => m r -> ContRet m r
 catch' = runContId'
@@ -114,6 +119,9 @@ throw = throw'
 
 throwEmpty :: r -> Cont r ()
 throwEmpty = throwEmpty'
+
+mapResult :: (r -> r') -> (r' -> r) -> Cont r a -> Cont r' a
+mapResult = mapResult'
 
 catch :: Cont r r -> r
 catch = catch'
@@ -190,6 +198,10 @@ throwEmptyT = throwEmpty'
 throwEmptyM :: Monad m => m r -> ContT r m ()
 throwEmptyM = throwEmptyM'
 
+mapResultT :: (Monad m, Monad m') => (m r -> m' r') -> (m' r' -> m r)
+  -> ContT r m a -> ContT r' m' a
+mapResultT = mapResult'
+
 catchT :: Monad m => ContT r m r -> m r
 catchT = catch'
 
@@ -262,7 +274,13 @@ asCont :: ContT r m a -> Cont (m r) a
 asCont (ContT ra) = Cont ra
 
 asContTNest :: (MonadERun m, Monad n) => ContT (m r) n a -> ContT r (ElevMonad m n) a
-asContTNest (ContT ra) = ContT $ \k -> elevNest $ ra $ \c -> runElev $ k c
+asContTNest (ContT ra) = ContT $ elevNest . ra . (runElev .)
+
+unContTNest :: (MonadERun m, Monad n) => ContT r (ElevMonad m n) a -> ContT (m r) n a
+unContTNest (ContT ra) = ContT $ runElev . ra . (elevNest .)
 
 asContTFlip :: (MonadERun m, MonadERun n) => ContT (m r) n a -> ContT r (ElevMonad n m) a
-asContTFlip (ContT ra) = ContT $ \k -> elevFlip $ ra $ \c -> runElevFlip $ k c
+asContTFlip (ContT ra) = ContT $ elevFlip . ra . (runElevFlip .)
+
+unContTFlip :: (MonadERun m, MonadERun n) => ContT r (ElevMonad n m) a -> ContT (m r) n a
+unContTFlip (ContT ra) = ContT $ runElevFlip . ra . (elevFlip .)
