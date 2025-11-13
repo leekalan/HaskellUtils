@@ -4,11 +4,11 @@
   ScopedTypeVariables, TypeApplications, TypeOperators
 #-}
 module HaskellUtils.Cont (
-  Block, BlockT, Seg, SegT, Scope, ScopeT, Loop, LoopT, asCont, asContT,
-  ContMonad, cm_cont, cm_runCont, cm_runContId,
+  Block, BlockT, Seg, SegT, Scope, ScopeT, Loop, LoopT, asCont, asContT, asContTNest, asContTFlip,
+  ContMonad, ContRet, cm_cont, cm_runCont, cm_runContId,
   cont', runCont', runContId', throw', throwEmpty', catch', catchM', catchL', recurse', recurseF', loop', loopF',
   Cont, cont, runCont, runContId, throw, throwEmpty, catch, catchM, recurse, recurseF, loop, loopF,
-  ContT, contT, runContT, runContIdT, throwT, throwEmptyT, catchT, catchL, catchMonoid, recurseT, recurseFT, loopT, loopFT, loopState,
+  ContT, contT, runContT, runContIdT, throwT, throwM, throwEmptyT, throwEmptyM, catchT, catchL, catchMonoid, recurseT, recurseFT, loopT, loopFT, loopState,
 ) where
 
 import HaskellUtils.Transformer
@@ -51,8 +51,14 @@ runContId' = cm_runContId
 throw' :: forall m r. ContMonad r m => forall a. r -> m a
 throw' r = cont' $ const $ runContId' @m $ return r
 
+throwM' :: forall m r. ContMonad r m => forall a. ContRet m r -> m a
+throwM' r = cont' $ const r
+
 throwEmpty' :: forall m r. ContMonad r m => r -> m ()
 throwEmpty' = throw'
+
+throwEmptyM' :: forall m r. ContMonad r m => ContRet m r -> m ()
+throwEmptyM' = throwM'
 
 catch' :: forall m r. ContMonad r m => m r -> ContRet m r
 catch' = runContId'
@@ -175,8 +181,14 @@ runContIdT = runContId'
 throwT :: Monad m => r -> ContT r m a
 throwT = throw'
 
+throwM :: Monad m => m r -> ContT r m a
+throwM = throwM'
+
 throwEmptyT :: Monad m => r -> ContT r m ()
 throwEmptyT = throwEmpty'
+
+throwEmptyM :: Monad m => m r -> ContT r m ()
+throwEmptyM = throwEmptyM'
 
 catchT :: Monad m => ContT r m r -> m r
 catchT = catch'
@@ -241,10 +253,16 @@ instance Monad m => Monad (ContT r m) where
 
 instance MonadT (ContT r) where
   lift :: Monad m => m a -> ContT r m a
-  lift ma = ContT $ \k -> ma >>= k
+  lift ma = ContT (ma >>=)
 
 asContT :: Cont (m r) a -> ContT r m a
 asContT (Cont ra) = ContT ra
 
 asCont :: ContT r m a -> Cont (m r) a
 asCont (ContT ra) = Cont ra
+
+asContTNest :: (MonadERun m, Monad n) => ContT (m r) n a -> ContT r (ElevMonad m n) a
+asContTNest (ContT ra) = ContT $ \k -> elevNest $ ra $ \c -> runElev $ k c
+
+asContTFlip :: (MonadERun m, MonadERun n) => ContT (m r) n a -> ContT r (ElevMonad n m) a
+asContTFlip (ContT ra) = ContT $ \k -> elevFlip $ ra $ \c -> runElevFlip $ k c

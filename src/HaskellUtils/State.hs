@@ -275,3 +275,5 @@ instance MonadE (State s) where
   elev :: Applicative m => State s a -> StateT s m a
   elev (StateCons sa) = StateTCons $ \s -> pure $ sa s
 
+instance IsElevMonad (StateT s) where
+  type NonElevMonad (StateT s) = State s

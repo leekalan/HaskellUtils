@@ -72,6 +72,7 @@ library
         HaskellUtils.Iterator
         HaskellUtils.Tuple
         HaskellUtils.Cont
+        HaskellUtils.DelimCont
 
     -- Modules included in this library but not exported.
     other-modules:

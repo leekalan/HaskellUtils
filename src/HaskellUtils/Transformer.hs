@@ -1,9 +1,10 @@
 {-# LANGUAGE
-  FunctionalDependencies, FlexibleContexts,
+  FunctionalDependencies, FlexibleContexts, TypeOperators,
   QuantifiedConstraints, TypeFamilies, RankNTypes
 #-}
-{-# OPTIONS_GHC -Wno-star-is-type #-}
 module HaskellUtils.Transformer where
+  
+import Data.Kind
 
 class (forall m. Monad m => Monad (t m)) => MonadT t where
   lift :: Monad m => m a -> t m a
@@ -29,7 +30,32 @@ lift7 = lift . lift6
 class MonadT t => MonadTMap t where
   mapT :: (Monad m, Monad n) => (forall x. m x -> n x) -> t m a -> t n a
 
-class (Monad m, MonadT (ElevMonad m)) => MonadE m where
-  type ElevMonad m :: (* -> *) -> * -> *
+class (Monad m, MonadT (ElevMonad m), NonElevMonad (ElevMonad m) ~ m) => MonadE m where
+  type ElevMonad m :: (Type -> Type) -> Type -> Type
 
   elev :: Monad n => m a -> ElevMonad m n a
+
+  elevNest :: Monad n => n (m a) -> ElevMonad m n a
+  elevNest mna = do
+    na <- lift mna
+    elev na
+
+  elevFlip :: Monad n => m (n a) -> ElevMonad m n a
+  elevFlip nma = do
+    ma <- elev nma
+    lift ma
+
+class (MonadT t, MonadE (NonElevMonad t), ElevMonad (NonElevMonad t) ~ t) => IsElevMonad t where
+  type NonElevMonad t :: (Type -> Type)
+
+class MonadE m => MonadERun m where
+  runElev :: ElevMonad m n a -> n (m a)
+
+  runElevFlip :: MonadERun n => ElevMonad m n a -> m (n a)
+  runElevFlip mna = runElev $ monadFlip mna
+
+  monadNestFlip :: Monad n => m (n a) -> n (m a)
+  monadNestFlip nma = runElev $ elevFlip nma
+
+  monadFlip :: MonadE n => ElevMonad m n a -> ElevMonad n m a
+  monadFlip mna = elevFlip $ runElev mna

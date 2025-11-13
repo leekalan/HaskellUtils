@@ -95,6 +95,13 @@ instance MonadE Maybe where
   elev :: Monad n => Maybe a -> MaybeT n a
   elev ma = MaybeT $ pure ma
 
+instance IsElevMonad MaybeT where
+  type NonElevMonad MaybeT = Maybe
+
+instance MonadERun Maybe where
+  runElev :: MaybeT n a -> n (Maybe a)
+  runElev (MaybeT ma) = ma
+
 onNothingT :: Monad m => m () -> MaybeT m a -> MaybeT m a
 onNothingT m (MaybeT ma) = MaybeT $ do
   r <- ma

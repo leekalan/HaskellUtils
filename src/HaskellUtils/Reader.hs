@@ -164,3 +164,6 @@ instance MonadE (Reader r) where
 
   elev :: Applicative n => Reader r a -> ReaderT r n a
   elev (ReaderCons ra) = ReaderTCons $ \r -> pure $ ra r
+
+instance IsElevMonad (ReaderT r) where
+  type NonElevMonad (ReaderT r) = Reader r

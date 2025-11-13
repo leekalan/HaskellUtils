@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeApplications #-}
 module HaskellUtils.Test where
 
 import HaskellUtils.State
@@ -6,6 +7,8 @@ import HaskellUtils.Reader
 import HaskellUtils.Transformer
 import HaskellUtils.Cont
 import Control.Monad
+import HaskellUtils.Maybe
+import HaskellUtils.DelimCont
 
 incrementRead :: MonadT r => (ReaderMonad Int (r s), StateMonad Int s) => r s ()
 incrementRead = do
@@ -74,9 +77,12 @@ testFind63 n = do
 
 data Tree = Leaf (Int, String) | Branch Tree Tree
 
-treeFind :: Int -> Tree -> Maybe String
-treeFind n t = catchMonoid $ search t
+treeFind :: Int -> Tree -> MaybeT IO String
+treeFind n t = runDelimMemptyT $ search t
   where
-    search :: Tree -> SegT Maybe String
-    search (Leaf (x, s)) = when (x == n) $ throw' s
-    search (Branch l r) = search l >> search r
+    search :: Tree -> DelimSegT IO String
+    search (Leaf (x, s)) = when (x == n) $ throwDelimT s
+    search (Branch l r) = do
+      lift $ print "branch!"
+      search l
+      search r
