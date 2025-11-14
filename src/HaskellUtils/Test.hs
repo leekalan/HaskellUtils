@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeApplications #-}
 module HaskellUtils.Test where
 
 import HaskellUtils.State
