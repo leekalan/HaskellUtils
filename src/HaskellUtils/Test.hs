@@ -77,20 +77,19 @@ testFind63 n = do
 data Tree = Leaf (Int, String) | Branch Tree Tree
 
 treeFind :: Int -> Tree -> MaybeT IO String
-treeFind n t = runDelimMemptyT $ search t
+treeFind n t = runDelimThrowMemptyT $ search t
 -- 
 -- It could also be the following when done manually:
---  treeFind n t = catchT $ runDelimMT (search t) $ const Nothing
+--   treeFind n t = catchT $ runDelimThrowMT (search t) $ const Nothing
 -- 
 -- Or if you really want to to it manually:
 --   treeFind n t =
 --     let throwNothing = const $ throwT Nothing
---     in  catchT $ asContTNest $ runDelimWithT (search t) throwNothing
+--     in  catchT $ asContTNest $ runDelimT (search t) throwNothing
 -- 
   where
     search :: Tree -> DelimSegT IO String
     search (Leaf (x, s)) = when (x == n) $ throwDelimT s
     search (Branch l r) = do
       lift $ print "branch!"
-      search l
-      search r
+      search l >> search r

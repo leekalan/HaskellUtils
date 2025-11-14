@@ -27,11 +27,17 @@ newtype DelimCont r a = DelimCont { _runDelimCont :: forall x. (a -> Cont x r) -
 delimCont :: (forall x. (a -> Cont x r) -> Cont x r) -> DelimCont r a
 delimCont = DelimCont
 
-runDelimWith :: DelimCont r a -> forall x. (a -> Cont x r) -> Cont x r
-runDelimWith = _runDelimCont
+runDelim :: DelimCont r a -> forall x. (a -> Cont x r) -> Cont x r
+runDelim = _runDelimCont
 
-runDelim :: DelimCont r r -> forall x. Cont x r
-runDelim (DelimCont ra) = ra return
+runDelimThrow :: DelimCont r a -> forall x. (a -> x) -> Cont x r
+runDelimThrow ra f = runDelim ra $ throw . f
+
+catchDelim :: DelimCont r r -> r
+catchDelim (DelimCont ra) = catch $ ra return
+
+catchDelimWith :: DelimCont r a -> (a -> r) -> r
+catchDelimWith ra f = catchDelim $ f <$> ra
 
 throwDelim :: r -> forall a. DelimCont r a
 throwDelim r = delimCont $ const $ return r
@@ -39,12 +45,12 @@ throwDelim r = delimCont $ const $ return r
 throwDelimEmpty :: r -> DelimCont r ()
 throwDelimEmpty = throwDelim
 
-runDelimM :: forall m. Monad m => forall r a. DelimCont r a -> forall b. (a -> m b) -> ContT b m r
-runDelimM ra f = asContT $ runDelimWith ra $ throw . f
+runDelimThrowM :: forall m. Monad m => forall r a. DelimCont r a -> forall x. (a -> m x) -> ContT x m r
+runDelimThrowM ra f = asContT $ runDelimThrow ra f
 
-runDelimMempty :: forall m r. (Monad m, Monoid (m r))
-  => DelimCont r () -> m r
-runDelimMempty r = catchT $ runDelimM r $ const mempty
+runDelimThrowMempty :: forall m r. (Monad m, Monoid (m r))
+  => forall a. DelimCont r a -> m r
+runDelimThrowMempty r = catchT $ runDelimThrowM r $ const mempty
 
 instance Functor (DelimCont r) where
   fmap :: (a -> b) -> DelimCont r a -> DelimCont r b
@@ -61,7 +67,7 @@ instance Applicative (DelimCont r) where
 instance Monad (DelimCont r) where
   (>>=) :: DelimCont r a -> (a -> DelimCont r b) -> DelimCont r b
   (>>=) (DelimCont ra) f = DelimCont $ \k ->
-    ra $ \a -> runDelimWith (f a) k
+    ra $ \a -> runDelim (f a) k
 
 
 newtype DelimContT r m a = DelimContT { _runDelimContT :: forall x. (a -> ContT x m r) -> ContT x m r }
@@ -69,11 +75,17 @@ newtype DelimContT r m a = DelimContT { _runDelimContT :: forall x. (a -> ContT 
 delimContT :: (forall x. (a -> ContT x m r) -> ContT x m r) -> DelimContT r m a
 delimContT = DelimContT
 
-runDelimWithT :: DelimContT r m a -> forall x. (a -> ContT x m r) -> ContT x m r
-runDelimWithT = _runDelimContT
+runDelimT :: DelimContT r m a -> forall x. (a -> ContT x m r) -> ContT x m r
+runDelimT = _runDelimContT
 
-runDelimT :: Monad m => DelimContT r m r -> forall x. ContT x m r
-runDelimT (DelimContT ra) = ra return
+runDelimThrowT :: Monad m => DelimContT r m a -> forall x. (a -> m x) -> ContT x m r
+runDelimThrowT ra f = runDelimT ra $ throwM . f
+
+catchDelimT :: Monad m => DelimContT r m r -> m r
+catchDelimT (DelimContT ra) = catchT $ ra return
+
+catchDelimWithT :: Monad m => DelimContT r m a -> (a -> m r) -> m r
+catchDelimWithT ra f = catchDelimT $ ra >>= lift . f
 
 throwDelimT :: Monad m => r -> forall a. DelimContT r m a
 throwDelimT r = delimContT $ const $ return r
@@ -81,13 +93,13 @@ throwDelimT r = delimContT $ const $ return r
 throwDelimEmptyT :: Monad m => r -> DelimContT r m ()
 throwDelimEmptyT = throwDelimT
 
-runDelimMT :: forall n m. (Monad m, MonadERun n)
+runDelimThrowMT :: forall n m. (Monad m, MonadERun n)
   => forall r a. DelimContT r m a -> forall b. (a -> n b) -> ContT b (ElevMonad n m) r
-runDelimMT ra f = asContTNest $ runDelimWithT ra $ throwT . f
+runDelimThrowMT ra f = asContTNest $ runDelimThrowT ra $ return . f
 
-runDelimMemptyT :: forall n m r. (Monad m, MonadERun n, Monoid (n r))
-  => DelimContT r m () -> (ElevMonad n m) r
-runDelimMemptyT r = catchT $ runDelimMT r $ const mempty
+runDelimThrowMemptyT :: forall n m r. (Monad m, MonadERun n, Monoid (n r))
+  => forall a. DelimContT r m a -> (ElevMonad n m) r
+runDelimThrowMemptyT r = catchT $ runDelimThrowMT r $ const mempty
 
 instance Functor (DelimContT r m) where
   fmap :: (a -> b) -> DelimContT r m a -> DelimContT r m b
@@ -108,7 +120,7 @@ instance Monad (DelimContT r m) where
   (>>=) (DelimContT ra) f =
     DelimContT $ \k ->
       ra $ \a ->
-        runDelimWithT (f a) k
+        runDelimT (f a) k
 
 
 instance MonadT (DelimContT r) where
