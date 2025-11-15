@@ -1,13 +1,19 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE KindSignatures #-}
 module HaskellUtils.Test where
 
 import HaskellUtils.State
 import HaskellUtils.Reader
 import HaskellUtils.Transformer
 import HaskellUtils.Cont
-import Control.Monad
-import HaskellUtils.Maybe
 import HaskellUtils.DelimCont
+import HaskellUtils.Maybe
+
+import Control.Monad
+import HaskellUtils.Any
 
 incrementRead :: MonadT r => (ReaderMonad Int (r s), StateMonad Int s) => r s ()
 incrementRead = do
@@ -93,3 +99,18 @@ treeFind n t = runDelimThrowMemptyT $ search t
     search (Branch l r) = do
       lift $ print "branch!"
       search l >> search r
+
+
+printAny :: [BoundAny Show] -> IO ()
+printAny = mapM_ $ \a -> runBoundAny a print
+
+printAnyIO :: [BoundAnyF Show IO] -> IO ()
+printAnyIO = mapM_ $ \a -> runBoundAnyF a (>>= print)
+
+printAnyIOTest :: IO ()
+printAnyIOTest = do
+  let arr = [
+          boundAnyF $ do print "first" >> return (10 :: Integer),
+          boundAnyF $ do print "second" >> return "text"
+        ]
+  printAnyIO arr

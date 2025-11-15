@@ -73,6 +73,7 @@ library
         HaskellUtils.Tuple
         HaskellUtils.Cont
         HaskellUtils.DelimCont
+        HaskellUtils.Any
 
     -- Modules included in this library but not exported.
     other-modules:
