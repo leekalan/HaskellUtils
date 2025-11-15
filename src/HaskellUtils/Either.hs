@@ -1,6 +1,6 @@
 {-# LANGUAGE
-  UndecidableInstances, InstanceSigs, RankNTypes,
-  MultiParamTypeClasses, TypeFamilies
+  UndecidableInstances, RankNTypes,
+  TypeFamilies, InstanceSigs
 #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module HaskellUtils.Either (

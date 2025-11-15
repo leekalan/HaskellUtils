@@ -1,6 +1,6 @@
 {-# LANGUAGE
-  MultiParamTypeClasses, InstanceSigs,
-  UndecidableInstances, TypeFamilies, RankNTypes
+  InstanceSigs, TypeFamilies,
+  UndecidableInstances, RankNTypes
 #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 module HaskellUtils.Maybe (

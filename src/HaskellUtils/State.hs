@@ -1,6 +1,7 @@
 {-# LANGUAGE
-  TupleSections, FlexibleInstances, InstanceSigs,
-  MultiParamTypeClasses, TypeFamilies, RankNTypes
+  FunctionalDependencies, RankNTypes,
+  FlexibleInstances, TypeFamilies,
+  TupleSections, InstanceSigs
 #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 module HaskellUtils.State (
@@ -19,7 +20,7 @@ import HaskellUtils.Transformer
 import HaskellUtils.Environment
 import HaskellUtils.Reader
 
-class ReaderMonad s m => StateMonad s m where
+class ReaderMonad s m => StateMonad s m | m -> s where
   sm_state :: (s -> StateRet m (a, s)) -> m a
   sm_put :: s -> m ()
 

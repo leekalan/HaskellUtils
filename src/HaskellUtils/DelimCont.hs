@@ -1,9 +1,4 @@
-{-# LANGUAGE
-  InstanceSigs, FlexibleInstances,  FlexibleContexts,
-  FunctionalDependencies, TypeFamilies, RankNTypes,
-  ScopedTypeVariables, TypeApplications, TypeOperators,
-  QuantifiedConstraints, AllowAmbiguousTypes
-#-}
+{-# LANGUAGE InstanceSigs, RankNTypes #-}
 module HaskellUtils.DelimCont where
 
 import HaskellUtils.Cont

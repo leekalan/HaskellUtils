@@ -1,4 +1,4 @@
-{-# LANGUAGE InstanceSigs, FlexibleContexts #-}
+{-# LANGUAGE InstanceSigs #-}
 module HaskellUtils.Iterator where
 
 import Data.Foldable

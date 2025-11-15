@@ -1,6 +1,6 @@
 {-# LANGUAGE
-  FunctionalDependencies, FlexibleContexts, TypeOperators,
-  QuantifiedConstraints, TypeFamilies, RankNTypes
+  TypeFamilies, TypeOperators, RankNTypes,
+  QuantifiedConstraints, FlexibleContexts
 #-}
 module HaskellUtils.Transformer where
   

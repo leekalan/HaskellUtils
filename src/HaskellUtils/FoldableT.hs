@@ -1,5 +1,4 @@
-{-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE InstanceSigs, BangPatterns #-}
 module HaskellUtils.FoldableT where
 
 import Control.Monad
