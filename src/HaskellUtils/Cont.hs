@@ -1,8 +1,4 @@
-{-# LANGUAGE
-  InstanceSigs, FlexibleInstances, TypeOperators,
-  FunctionalDependencies, TypeFamilies, RankNTypes,
-  ScopedTypeVariables, TypeApplications
-#-}
+{-# LANGUAGE InstanceSigs, RankNTypes, ScopedTypeVariables #-}
 module HaskellUtils.Cont (
   Block, BlockT, Seg, SegT, Scope, ScopeT, Loop, LoopT, asCont, asContT, asContTNest, unContTNest, asContTFlip, unContTFlip,
   Cont, cont, runCont, throw, throwEmpty, mapResult, catch, catchM, recurse, recurseF, loop, loopF,

@@ -1,5 +1,4 @@
 {-# LANGUAGE InstanceSigs, RankNTypes #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
 module HaskellUtils.PartialCont where
 
 import HaskellUtils.Cont
