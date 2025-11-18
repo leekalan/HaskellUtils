@@ -6,9 +6,9 @@ newtype Any r = Any { runAny :: (forall a. a -> r) -> r}
 any' :: a -> Any r
 any' a = Any ($ a)
 
-newtype AnyF f r = AnyF { runAnyF :: (forall a. f a -> r) -> r}
+newtype AnyF r f = AnyF { runAnyF :: (forall a. f a -> r) -> r}
 
-anyF :: f a -> AnyF f r
+anyF :: f a -> AnyF r f
 anyF fa = AnyF ($ fa)
 
 
@@ -31,7 +31,7 @@ anyAny a = AnyAny $ any' a
 runAnyAny :: AnyAny -> forall x. (forall a. a -> x) -> x
 runAnyAny (AnyAny a) = runAny a
 
-newtype AnyAnyF f = AnyAnyF { _runAnyAnyF :: forall a. AnyF f a }
+newtype AnyAnyF f = AnyAnyF { _runAnyAnyF :: forall a. AnyF a f }
 
 anyAnyF :: f a -> AnyAnyF f
 anyAnyF fa = AnyAnyF $ anyF fa

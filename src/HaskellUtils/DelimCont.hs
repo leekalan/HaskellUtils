@@ -5,7 +5,7 @@ import HaskellUtils.Cont
 import HaskellUtils.Transformer
 
 type DelimBlock r = DelimCont r r
-type DelimBlockT m r = ContT r m r
+type DelimBlockT m r = DelimContT r m r
 
 type DelimSeg r = DelimCont r ()
 type DelimSegT m r = DelimContT r m ()
@@ -40,10 +40,10 @@ throwDelim r = delimCont $ const $ return r
 throwDelimEmpty :: r -> DelimCont r ()
 throwDelimEmpty = throwDelim
 
-runDelimThrowM :: forall m. Monad m => forall r a. DelimCont r a -> forall x. (a -> m x) -> ContT x m r
+runDelimThrowM :: forall m r a. DelimCont r a -> forall x. (a -> m x) -> ContT x m r
 runDelimThrowM ra f = asContT $ runDelimThrow ra f
 
-runDelimThrowMempty :: forall m r. (Monad m, Monoid (m r))
+runDelimThrowMempty :: forall m r. (Applicative m, Monoid (m r))
   => forall a. DelimCont r a -> m r
 runDelimThrowMempty r = catchT $ runDelimThrowM r $ const mempty
 
@@ -73,19 +73,19 @@ delimContT = DelimContT
 runDelimT :: DelimContT r m a -> forall x. (a -> ContT x m r) -> ContT x m r
 runDelimT = _runDelimContT
 
-runDelimThrowT :: Monad m => DelimContT r m a -> forall x. (a -> m x) -> ContT x m r
+runDelimThrowT :: DelimContT r m a -> forall x. (a -> m x) -> ContT x m r
 runDelimThrowT ra f = runDelimT ra $ throwM . f
 
-catchDelimT :: Monad m => DelimContT r m r -> m r
-catchDelimT (DelimContT ra) = catchT $ ra return
+catchDelimT :: Applicative m => DelimContT r m r -> m r
+catchDelimT (DelimContT ra) = catchT $ ra pure
 
 catchDelimWithT :: Monad m => DelimContT r m a -> (a -> m r) -> m r
 catchDelimWithT ra f = catchDelimT $ ra >>= lift . f
 
-throwDelimT :: Monad m => r -> forall a. DelimContT r m a
+throwDelimT :: r -> forall a. DelimContT r m a
 throwDelimT r = delimContT $ const $ return r
 
-throwDelimEmptyT :: Monad m => r -> DelimContT r m ()
+throwDelimEmptyT :: r -> DelimContT r m ()
 throwDelimEmptyT = throwDelimT
 
 runDelimThrowMT :: forall n m. (Monad m, MonadERun n)
@@ -122,8 +122,13 @@ instance MonadT (DelimContT r) where
   lift :: Monad m => m a -> DelimContT r m a
   lift ma = DelimContT (lift ma >>=)
 
+asDelimContT :: Monad m => DelimCont (m r) a -> DelimContT r m a
+asDelimContT (DelimCont ra) = DelimContT $ \k -> do
+    asContT (ra $ \a -> asCont $ return <$> k a)
+    >>= lift
+
 delimAsCont :: DelimCont r a -> forall x. ContT r (Cont x) a
 delimAsCont (DelimCont ra) = contT ra
 
-delimAsContT :: Monad m => DelimContT r m a -> forall x. ContT r (ContT x m) a
+delimAsContT :: DelimContT r m a -> forall x. ContT r (ContT x m) a
 delimAsContT (DelimContT ra) = contT ra

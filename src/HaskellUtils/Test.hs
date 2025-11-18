@@ -9,11 +9,12 @@ import HaskellUtils.State
 import HaskellUtils.Reader
 import HaskellUtils.Transformer
 import HaskellUtils.Cont
-import HaskellUtils.DelimCont
+import HaskellUtils.PartialCont
 import HaskellUtils.Maybe
+import HaskellUtils.Any
 
 import Control.Monad
-import HaskellUtils.Any
+
 
 incrementRead :: MonadT r => (ReaderMonad Int (r s), StateMonad Int s) => r s ()
 incrementRead = do
@@ -32,18 +33,18 @@ testRead = do
 testCont :: Int -> IO ()
 testCont v = do
   print $ catch $ do
-    vp <- if v < 0 then throw' "negative" else return v
+    vp <- if v < 0 then throw "negative" else return v
     return ("postive " ++ show vp)
 
 
 test :: Int -> BlockT (Scope String) Int
 test n = do
-  lift $ when (n < 0) $ throw' "error"
+  lift $ when (n < 0) $ throw "error"
   return 10
 
 test2 :: Int -> Block String
 test2 n = do
-  x <- catch' $ test n
+  x <- catchT $ test n
   return $ show x
 
 
@@ -52,7 +53,7 @@ test2 n = do
 --               v     v     v
 find63Simple :: Loop String Int
 find63Simple n = do
-  when (n == 63) $ throw' "found it!"
+  when (n == 63) $ throw "found it!"
   -- incrementing counter
   return $ n + 1
 
@@ -63,14 +64,14 @@ find63 :: LoopT IO String Int
 find63 n = do
   -- inner scope that catches the throw
   string <- catchL $ do
-    when (n == 63) $ throw' "found it!"
+    when (n == 63) $ throwT "found it!"
 
     let ret = "not it: " ++ show n
     lift $ print ret
     return ret
 
   -- exits loop if 'found it!'
-  when (string == "found it!") $ throw' "found it!"
+  when (string == "found it!") $ throwT "found it!"
 
   -- incrementing counter
   return $ n + 1
@@ -83,19 +84,19 @@ testFind63 n = do
 data Tree = Leaf (Int, String) | Branch Tree Tree
 
 treeFind :: Int -> Tree -> MaybeT IO String
-treeFind n t = runDelimThrowMemptyT $ search t
+treeFind n t = runParMemptyT $ search t
 -- 
 -- It could also be the following when done manually:
---   treeFind n t = catchT $ runDelimThrowMT (search t) $ const Nothing
+--   treeFind n t = catchT $ runParMT (search t) $ const Nothing
 -- 
 -- Or if you really want to to it manually:
 --   treeFind n t =
---     let throwNothing = const $ throwT Nothing
---     in  catchT $ asContTNest $ runDelimT (search t) throwNothing
+--     let nothing = const $ return Nothing
+--     in  catchT $ asContTNest $ runParT (search t) nothing
 -- 
   where
-    search :: Tree -> DelimSegT IO String
-    search (Leaf (x, s)) = when (x == n) $ throwDelimT s
+    search :: Tree -> ParSegT IO String
+    search (Leaf (x, s)) = when (x == n) $ throwParT s
     search (Branch l r) = do
       lift $ print "branch!"
       search l >> search r
