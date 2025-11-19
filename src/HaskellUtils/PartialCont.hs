@@ -126,9 +126,7 @@ parAsDelimT (ParContT ra) = DelimContT $ \k -> contT $
   \f -> runContT (ra $ \a -> runContT (k a) f) f
 
 delimAsPar :: DelimCont r a -> ParCont r a
-delimAsPar (DelimCont ra) = ParCont $ \k -> cont $
-  \f -> runCont (ra $ throw . k) f
+delimAsPar ra = ParCont $ runDelimThrow ra
 
 delimAsParT :: DelimContT r m a -> ParContT r m a
-delimAsParT (DelimContT ra) = ParContT $ \k -> contT $
-  \f -> runContT (ra $ throwM . k) f
+delimAsParT ra = ParContT $ runDelimThrowT ra

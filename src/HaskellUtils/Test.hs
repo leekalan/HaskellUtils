@@ -5,8 +5,8 @@ import HaskellUtils.State
 import HaskellUtils.Reader
 import HaskellUtils.Transformer
 import HaskellUtils.Cont
-import HaskellUtils.PartialCont
 import HaskellUtils.Maybe
+import HaskellUtils.DelimCont
 import HaskellUtils.Any
 
 import Control.Monad
@@ -80,19 +80,19 @@ testFind63 n = do
 data Tree = Leaf (Int, String) | Branch Tree Tree
 
 treeFind :: Int -> Tree -> MaybeT IO String
-treeFind n t = runParMemptyT $ search t
+treeFind n t = runDelimThrowMemptyT $ search t
 -- 
 -- It could also be the following when done manually:
---   treeFind n t = catchT $ runParMT (search t) $ const Nothing
+--   treeFind n t = catchT $ runDelimThrowMT (search t) $ const Nothing
 -- 
 -- Or if you really want to to it manually:
 --   treeFind n t =
 --     let nothing = const $ return Nothing
---     in  catchT $ asContTNest $ runParT (search t) nothing
+--     in  catchT $ asContTNest $ runDelimThrowT (search t) nothing
 -- 
   where
-    search :: Tree -> ParSegT IO String
-    search (Leaf (x, s)) = when (x == n) $ throwParT s
+    search :: Tree -> DelimSegT IO String
+    search (Leaf (x, s)) = when (x == n) $ throwDelimT s
     search (Branch l r) = do
       lift $ print "branch!"
       search l >> search r
