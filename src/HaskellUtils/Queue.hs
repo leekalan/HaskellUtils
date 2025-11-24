@@ -8,6 +8,7 @@ import HaskellUtils.PartialCont
 import HaskellUtils.State
 import Control.Arrow
 import HaskellUtils.Producer
+import HaskellUtils.Transformer
 
 type EmptyQueue = EmptyProducer Queue
 type EmptyTQueue = EmptyProducerT Queue
@@ -38,7 +39,7 @@ dequeue q = first delimAsPar $ dequeueDelim q
   where
     dequeueDelim :: Queue a -> (DelimSeg a, Queue a)
     dequeueDelim (Q (a:as) bs) = (throwDelim a, Q as bs)
-    dequeueDelim (Q [] []) = (return (), Q [] [])
+    dequeueDelim (Q [] []) = (nop, Q [] [])
     dequeueDelim (Q [] bs) = dequeueDelim (Q (reverse bs) [])
 
 drainQueue :: Queue a -> [a]

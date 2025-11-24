@@ -26,13 +26,13 @@ testLiftReaderNest = do
   liftR ioThing
 
 readerThing :: ReaderT Int IO ()
-readerThing = readerT $ const $ return ()
+readerThing = elev nop
 
 readerThingUpper :: ReaderT Int (MaybeT (ReaderT Int IO)) ()
-readerThingUpper = readerT $ const $ return ()
+readerThingUpper = elev nop
 
 ioThing :: IO ()
-ioThing = return ()
+ioThing = nop
 
 incrementRead :: MonadT r => (ReaderMonad Int (r s), StateMonad Int s) => r s ()
 incrementRead = do
@@ -145,7 +145,7 @@ queueTest xs = do
     fillQueue (y:ys) = do
       enqueueState y
       fillQueue ys
-    fillQueue [] = return ()
+    fillQueue [] = nop
 
     printQueue :: StateT (Queue Int) IO ()
     printQueue = do
@@ -155,5 +155,5 @@ queueTest xs = do
         Just y -> do
           liftR $ print y
           printQueue
-        Nothing -> return ()
+        Nothing -> nop
 

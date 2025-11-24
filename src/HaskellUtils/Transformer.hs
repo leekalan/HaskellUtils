@@ -8,8 +8,8 @@ module HaskellUtils.Transformer where
   
 import Data.Kind
 
-data Base
-data Recurse
+nop :: Monad m => m ()
+nop = return ()
 
 
 class MonadRet a m where
@@ -56,6 +56,9 @@ class (Monad n, Monad m) => LiftMonad n m where
 type family LiftCase (n :: Type -> Type) (m :: Type -> Type) where
   LiftCase n n = Base
   LiftCase _ _ = Recurse
+
+data Base
+data Recurse
 
 class (Monad n, Monad m) => LiftMonad' c n m where
   liftR' :: n a -> m a
