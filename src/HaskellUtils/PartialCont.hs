@@ -4,129 +4,103 @@ module HaskellUtils.PartialCont where
 import HaskellUtils.Cont
 import HaskellUtils.DelimCont
 import HaskellUtils.Transformer
+import Control.Applicative
 
 type ParBlock r = ParCont r r
-type ParBlockT m r = ParContT r m r
+-- type ParBlockT m r = ParContT r m r
 
-type ParSeg r = ParCont r ()
-type ParSegT m r = ParContT r m ()
-
-type ParScope r = ParCont r
-type ParScopeT m r = ParContT r m
-
-type ParLoop r a = a -> ParCont r a
-type ParLoopT m r a = a -> ParContT r m a
+type ParSeg = ParCont ()
+-- type ParSegT m r = ParContT r m ()
 
 
-newtype ParCont r a = ParCont { _runParCont :: forall x. (a -> x) -> Cont x r }
+newtype ParCont s a = ParCont { _runParCont :: forall x. (s -> x) -> Cont x a }
 
-parCont :: (forall x. (a -> x) -> Cont x r) -> ParCont r a
+parCont :: (forall x. (s -> x) -> Cont x a) -> ParCont s a
 parCont = ParCont
 
-runPar :: ParCont r a -> forall x. (a -> x) -> Cont x r
+runPar :: ParCont s a -> forall x. (s -> x) -> Cont x a
 runPar = _runParCont
 
-catchPar :: ParCont r r -> r
-catchPar (ParCont ra) = catch $ ra id
+runPar' :: (s -> x) -> forall a. ParCont s a -> Cont x a
+runPar' = flip _runParCont
 
-catchParWith :: ParCont r a -> (a -> r) -> r
-catchParWith (ParCont ra) f = catch $ ra f
-
-throwPar :: r -> forall a. ParCont r a
-throwPar r = parCont $ const $ return r
-
-throwParEmpty :: r -> ParCont r ()
-throwParEmpty = throwPar
-
-runParM :: forall m r a. ParCont r a -> forall x. (a -> m x) -> ContT x m r
+runParM :: ParCont s a -> forall m x. (s -> m x) -> ContT x m a
 runParM ra f = asContT $ runPar ra f
 
-runParMempty :: forall m r. (Applicative m, Monoid (m r))
-  => forall a. ParCont r a -> m r
-runParMempty r = catchT $ runParM r $ const mempty
+runParEmpty :: ParCont s a -> forall m. Alternative m => m a
+runParEmpty ra = catchT $ runParM ra $ const empty
 
-instance Functor (ParCont r) where
-  fmap :: (a -> b) -> ParCont r a -> ParCont r b
-  fmap f (ParCont ra) = ParCont $ \k -> ra $ k . f
+instance Functor (ParCont s) where
+  fmap :: (a -> b) -> ParCont s a -> ParCont s b
+  fmap f (ParCont sa) = ParCont $ fmap f . sa
 
-instance Applicative (ParCont r) where
-  pure :: a -> ParCont r a
-  pure a = ParCont $ throw . ($ a)
+instance Applicative (ParCont s) where
+  pure :: a -> ParCont s a
+  pure a = ParCont $ const $ return a
 
-  (<*>) :: ParCont r (a -> b) -> ParCont r a -> ParCont r b
-  (<*>) (ParCont rf) (ParCont ra) = ParCont $ \k -> cont $ \f ->
-    runCont (rf $ \g -> runCont (ra $ k . g) f) f
+  (<*>) :: ParCont s (a -> b) -> ParCont s a -> ParCont s b
+  (<*>) (ParCont sf) (ParCont sa) = ParCont $ \k -> sf k <*> sa k
 
-instance Monad (ParCont r) where
-  (>>=) :: ParCont r a -> (a -> ParCont r b) -> ParCont r b
-  (>>=) (ParCont ra) far = ParCont $ \k -> cont $ \f ->
-    runCont (ra $ \a -> runCont (runPar (far a) k) f) f
+instance Monad (ParCont s) where
+  (>>=) :: ParCont s a -> (a -> ParCont s b) -> ParCont s b
+  (>>=) (ParCont sa) fsb = ParCont $ \k -> sa k >>= runPar' k . fsb
 
-newtype ParContT r m a = ParContT { _runParContT :: forall x. (a -> m x) -> ContT x m r }
 
-parContT :: (forall x. (a -> m x) -> ContT x m r) -> ParContT r m a
+newtype ParContT s m a = ParContT { _runParContT :: forall x. (s -> m x) -> ContT x m a }
+
+parContT :: (forall x. (s -> m x) -> ContT x m a) -> ParContT s m a
 parContT = ParContT
 
-runParT :: ParContT r m a -> forall x. (a -> m x) -> ContT x m r
+runParT :: ParContT s m a -> forall x. (s -> m x) -> ContT x m a
 runParT = _runParContT
 
-catchParT :: Applicative m => ParContT r m r -> m r
-catchParT (ParContT ra) = catchT $ ra pure
+runParT' :: (s -> m x) -> ParContT s m a -> ContT x m a
+runParT' = flip _runParContT
 
-catchParWithT :: Applicative m => ParContT r m a -> (a -> m r) -> m r
-catchParWithT (ParContT ra) f = catchT $ ra f
+runParMT :: Monad m => ParContT s m a -> forall n. MonadERun n
+  => forall x. (s -> (ElevMonad n m) x) -> ContT x (ElevMonad n m) a
+runParMT ra f = asContTNest $ runParT ra $ runElev . f
 
-throwParT :: r -> forall a. ParContT r m a
-throwParT r = parContT $ const $ return r
+runParEmptyT :: Monad m => ParContT s m a
+  -> forall n. (MonadERun n, Alternative n) => (ElevMonad n m) a
+runParEmptyT ra = catchT $ runParMT ra $ const $ elev empty
 
-throwParEmptyT :: r -> ParContT r m ()
-throwParEmptyT = throwParT
+instance Functor (ParContT s m) where
+  fmap :: (a -> b) -> ParContT s m a -> ParContT s m b
+  fmap f (ParContT sa) = ParContT $ fmap f . sa
 
-runParMT :: forall n m. (Monad m, MonadERun n)
-  => forall r a. ParContT r m a -> forall b. (a -> n b) -> ContT b (ElevMonad n m) r
-runParMT ra f = asContTNest $ runParT ra $ return . f
+instance Applicative (ParContT s m) where
+  pure :: a -> ParContT s m a
+  pure a = ParContT $ const $ return a
 
-runParMemptyT :: forall n m r. (Monad m, MonadERun n, Monoid (n r))
-  => forall a. ParContT r m a -> (ElevMonad n m) r
-runParMemptyT r = catchT $ runParMT r $ const mempty
+  (<*>) :: ParContT s m (a -> b) -> ParContT s m a -> ParContT s m b
+  (<*>) (ParContT sf) (ParContT sa) = ParContT $ \k -> sf k <*> sa k
 
-instance Functor (ParContT r m) where
-  fmap :: (a -> b) -> ParContT r m a -> ParContT r m b
-  fmap f (ParContT ra) = ParContT $ \k -> ra $ k . f
-
-instance Applicative (ParContT r m) where
-  pure :: a -> ParContT r m a
-  pure a = ParContT $ \f -> throwM $ f a
-
-  (<*>) :: ParContT r m (a -> b) -> ParContT r m a -> ParContT r m b
-  (<*>) (ParContT rf) (ParContT ra) = ParContT $ \k -> contT $ \f ->
-    runContT (rf $ \g -> runContT (ra $ k . g) f) f
-
-instance Monad (ParContT r m) where
-  (>>=) :: ParContT r m a -> (a -> ParContT r m b) -> ParContT r m b
-  (>>=) (ParContT ra) far = ParContT $ \k -> contT $ \f ->
-    runContT (ra $ \a -> runContT (runParT (far a) k) f) f
+instance Monad (ParContT s m) where
+  (>>=) :: ParContT s m a -> (a -> ParContT s m b) -> ParContT s m b
+  (>>=) (ParContT sa) fsb = ParContT $ \k -> sa k >>= runParT' k . fsb
 
 
+instance MonadT (ParContT s) where
+  lift :: Monad m => m a -> ParContT s m a
+  lift ma = ParContT $ const $ lift ma
 
-instance MonadT (ParContT r) where
-  lift :: Monad m => m a -> ParContT r m a
-  lift ma = ParContT $ \k -> throwM $ ma >>= k
+asParContT :: Monad m => ParCont (m s) a -> ParContT s m a
+asParContT (ParCont ra) = ParContT $ \k -> asContT $ ra (>>= k)
 
-asParContT :: Monad m => ParCont (m r) a -> ParContT r m a
-asParContT (ParCont ra) = ParContT $ \k -> contT $ \f ->
-  runCont (ra k) (>>= f)
+asParContTAlt :: Monad m => ParCont s (m a) -> ParContT s m a
+asParContTAlt (ParCont ra) = ParContT $ \k -> asContT (ra k) >>= lift
 
-parAsDelim :: ParCont r a -> DelimCont r a
+parAsDelim :: ParCont a r -> DelimCont r a
 parAsDelim (ParCont ra) = DelimCont $ \k -> cont $
   \f -> runCont (ra $ \a -> runCont (k a) f) f
 
-parAsDelimT :: ParContT r m a -> DelimContT r m a
+parAsDelimT :: ParContT a m r -> DelimContT r m a
 parAsDelimT (ParContT ra) = DelimContT $ \k -> contT $
   \f -> runContT (ra $ \a -> runContT (k a) f) f
 
-delimAsPar :: DelimCont r a -> ParCont r a
+delimAsPar :: DelimCont a s -> ParCont s a
 delimAsPar ra = ParCont $ runDelimThrow ra
 
-delimAsParT :: DelimContT r m a -> ParContT r m a
+delimAsParT :: DelimContT a m s -> ParContT s m a
 delimAsParT ra = ParContT $ runDelimThrowT ra

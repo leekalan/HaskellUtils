@@ -59,7 +59,6 @@ library
 
     -- Modules exported by the library.
     exposed-modules:
-        HaskellUtils.Environment
         HaskellUtils.Maybe
         HaskellUtils.Either
         HaskellUtils.Optionals
@@ -75,6 +74,7 @@ library
         HaskellUtils.PartialCont
         HaskellUtils.DelimCont
         HaskellUtils.Any
+        HaskellUtils.Producer
         HaskellUtils.Queue
 
     -- Modules included in this library but not exported.

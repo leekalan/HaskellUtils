@@ -2,12 +2,37 @@
   TypeFamilies, TypeOperators, RankNTypes,
   QuantifiedConstraints, FlexibleContexts
 #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE InstanceSigs #-}
+{-# OPTIONS_GHC -Wno-orphans #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module HaskellUtils.Transformer where
   
 import Data.Kind
+import Control.Monad.IO.Class
+
+class MonadRet a m where
+  liftRet :: a -> m
+
+instance Monad m => MonadRet a (m a) where
+  liftRet :: a -> m a
+  liftRet = return
+
+instance (Monad m, MonadT t) => MonadRet (m a) (t m a) where
+  liftRet :: m a -> t m a
+  liftRet = lift
+
+instance (Monad m, MonadT t, MonadRet ar (m a)) => MonadRet ar (t m a) where
+  liftRet :: ar -> t m a
+  liftRet = lift . liftRet
+
 
 class (forall m. Monad m => Monad (t m)) => MonadT t where
   lift :: Monad m => m a -> t m a
+
+instance (MonadIO m, MonadT t) => MonadIO (t m) where
+  liftIO :: IO a -> t m a
+  liftIO = lift . liftIO
 
 lift2 :: (Monad m, MonadT t0, MonadT t1) => m a -> t0 (t1 m) a
 lift2 = lift . lift

@@ -1,12 +1,9 @@
 {-# LANGUAGE InstanceSigs, RankNTypes, ScopedTypeVariables #-}
-module HaskellUtils.Cont (
-  Block, BlockT, Seg, SegT, Scope, ScopeT, Loop, LoopT, asCont, asContT, asContTNest, unContTNest, asContTFlip, unContTFlip,
-  Cont, cont, runCont, throw, throwEmpty, mapResult, catch, catchM, recurse, recurseF, loop, loopF,
-  ContT, contT, runContT, throwT, throwM, throwEmptyT, mapResultT, throwEmptyM, catchT, catchL, catchMonoid, recurseT, recurseFT, loopT, loopFT, loopState,
-) where
+module HaskellUtils.Cont where
 
 import HaskellUtils.Transformer
 import HaskellUtils.State
+import Control.Applicative
 
 type Block r = Cont r r
 type BlockT m r = ContT r m r
@@ -122,8 +119,8 @@ catchT rr = runContT rr pure
 catchL :: Monad m => ContT r m r -> ContT r' m r
 catchL = lift . catchT
 
-catchMonoid :: (Monad m, Monoid (m r)) => ContT r m () -> m r
-catchMonoid r = catchT (r >> lift mempty)
+catchAlternative :: (Monad m, Alternative m) => ContT r m () -> m r
+catchAlternative r = catchT (r >> lift empty)
 
 recurseT :: (a -> ContT r m a) -> a -> ContT r m r
 recurseT f a = f a >>= recurseT f
@@ -137,11 +134,11 @@ loopT = loopT
 loopFT :: a -> (a -> ContT r m a) -> m r
 loopFT = loopFT
 
-loopState :: forall m r s a. StateMonad s m => ContT r m a -> m r
-loopState ra = catchT recurseState
-  where
-    recurseState :: ContT r m r
-    recurseState = ra >> recurseState
+-- loopState :: forall m r s a. StateMonad s m => ContT r m a -> m r
+-- loopState ra = catchT recurseState
+--   where
+--     recurseState :: ContT r m r
+--     recurseState = ra >> recurseState
 
 instance Functor (ContT r m) where
   fmap :: (a -> b) -> ContT r m a -> ContT r m b

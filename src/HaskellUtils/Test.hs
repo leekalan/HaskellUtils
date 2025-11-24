@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE UndecidableInstances #-}
 module HaskellUtils.Test where
 
 import HaskellUtils.State
@@ -10,20 +11,41 @@ import HaskellUtils.DelimCont
 import HaskellUtils.Any
 
 import Control.Monad
+import HaskellUtils.Queue
+import HaskellUtils.PartialCont
+import Control.Monad.IO.Class
 
 
-incrementRead :: MonadT r => (ReaderMonad Int (r s), StateMonad Int s) => r s ()
-incrementRead = do
-  r <- ask'
-  lift $ modify' (+r)
+testLiftReader :: MaybeT (MaybeT (ReaderT Int IO)) ()
+testLiftReader = liftReader readerThing
 
-incrementWith :: StateMonad Int s => Int -> s ()
-incrementWith = runReaderT incrementRead
+-- THIS ERRORS WHICH IS CORRECT BECAUSE IT CAN'T BE LIFTED
+-- testReaderNotLift :: ReaderT Int IO ()
+-- testReaderNotLift = liftReader readerThing
 
-testRead :: IO ()
-testRead = do
-  let x = evalState (incrementWith 3)
-  print $ x 2
+testLiftReaderNest :: MaybeT (ReaderT Int (MaybeT (ReaderT Int IO))) ()
+testLiftReaderNest = do
+  liftReader readerThing
+  liftReader readerThingUpper
+
+readerThing :: ReaderT Int IO ()
+readerThing = readerT $ const $ return ()
+
+readerThingUpper :: ReaderT Int (MaybeT (ReaderT Int IO)) ()
+readerThingUpper = readerT $ const $ return ()
+
+-- incrementRead :: MonadT r => (ReaderMonad Int (r s), StateMonad Int s) => r s ()
+-- incrementRead = do
+--   r <- ask'
+--   lift $ modify' (+r)
+
+-- incrementWith :: StateMonad Int s => Int -> s ()
+-- incrementWith = runReaderT incrementRead
+
+-- testRead :: IO ()
+-- testRead = do
+--   let x = evalState (incrementWith 3)
+--   print $ x 2
 
 
 testCont :: Int -> IO ()
@@ -80,7 +102,7 @@ testFind63 n = do
 data Tree = Leaf (Int, String) | Branch Tree Tree
 
 treeFind :: Int -> Tree -> MaybeT IO String
-treeFind n t = runDelimThrowMemptyT $ search t
+treeFind n t = runDelimThrowEmptyT $ search t
 -- 
 -- It could also be the following when done manually:
 --   treeFind n t = catchT $ runDelimThrowMT (search t) $ const Nothing
@@ -111,3 +133,27 @@ printAnyIOTest = do
           boundAnyF $ do print "second" >> return "text"
         ]
   printAnyIO arr
+
+
+-- queueTest :: [Int] -> IO ()
+-- queueTest xs = do
+--   void $ runStateFT newQueue $ do
+--     elev $ fillQueue xs
+--     printQueue
+--   where
+--     fillQueue :: [Int] -> State (Queue Int) ()
+--     fillQueue (y:ys) = do
+--       enqueueState y
+--       fillQueue ys
+--     fillQueue [] = return ()
+
+--     printQueue :: StateT (Queue Int) IO ()
+--     printQueue = do
+--       ps <- dequeueStateT
+--       let x = runParEmpty ps
+--       case x of
+--         Just y -> do
+--           liftIO $ print y
+--           printQueue
+--         Nothing -> return ()
+

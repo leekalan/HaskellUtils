@@ -1,8 +1,10 @@
 {-# LANGUAGE InstanceSigs, RankNTypes #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 module HaskellUtils.DelimCont where
 
 import HaskellUtils.Cont
 import HaskellUtils.Transformer
+import Control.Applicative
 
 type DelimBlock r = DelimCont r r
 type DelimBlockT m r = DelimContT r m r
@@ -40,12 +42,12 @@ throwDelim r = delimCont $ const $ return r
 throwDelimEmpty :: r -> DelimCont r ()
 throwDelimEmpty = throwDelim
 
-runDelimThrowM :: forall m r a. DelimCont r a -> forall x. (a -> m x) -> ContT x m r
+runDelimThrowM :: DelimCont r a -> forall m x. (a -> m x) -> ContT x m r
 runDelimThrowM ra f = asContT $ runDelimThrow ra f
 
-runDelimThrowMempty :: forall m r. (Applicative m, Monoid (m r))
-  => forall a. DelimCont r a -> m r
-runDelimThrowMempty r = catchT $ runDelimThrowM r $ const mempty
+runDelimThrowEmpty :: DelimCont r a
+  -> forall m. Alternative m => m r
+runDelimThrowEmpty r = catchT $ runDelimThrowM r $ const empty
 
 instance Functor (DelimCont r) where
   fmap :: (a -> b) -> DelimCont r a -> DelimCont r b
@@ -88,13 +90,13 @@ throwDelimT r = delimContT $ const $ return r
 throwDelimEmptyT :: r -> DelimContT r m ()
 throwDelimEmptyT = throwDelimT
 
-runDelimThrowMT :: forall n m. (Monad m, MonadERun n)
-  => forall r a. DelimContT r m a -> forall b. (a -> n b) -> ContT b (ElevMonad n m) r
-runDelimThrowMT ra f = asContTNest $ runDelimThrowT ra $ return . f
+runDelimThrowMT :: Monad m => DelimContT r m a -> forall n. MonadERun n
+  => forall b. (a -> (ElevMonad n m) b) -> ContT b (ElevMonad n m) r
+runDelimThrowMT ra f = asContTNest $ runDelimThrowT ra $ runElev . f
 
-runDelimThrowMemptyT :: forall n m r. (Monad m, MonadERun n, Monoid (n r))
-  => forall a. DelimContT r m a -> (ElevMonad n m) r
-runDelimThrowMemptyT r = catchT $ runDelimThrowMT r $ const mempty
+runDelimThrowEmptyT :: Monad m => DelimContT r m a
+  -> forall n. (MonadERun n, Alternative n) => (ElevMonad n m) r
+runDelimThrowEmptyT r = catchT $ runDelimThrowMT r $ const $ elev empty
 
 instance Functor (DelimContT r m) where
   fmap :: (a -> b) -> DelimContT r m a -> DelimContT r m b
