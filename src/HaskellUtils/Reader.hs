@@ -128,35 +128,37 @@ instance IsElevMonad (ReaderT r) where
   type NonElevMonad (ReaderT r) = Reader r
 
 
-class (ReaderMonad r n, Monad m) => HasMonadReader r n m where
+class (Monad n, Monad m) => LiftReaderMonad n m where
   liftReader :: n a -> m a
 
-type family IsBaseCase (n :: Type -> Type) (m :: Type -> Type) :: Bool where
-  IsBaseCase n n = 'True
-  IsBaseCase _ _ = 'False
+-- This makes the boolean determined by n and m, creating injectivity
+--
+-- This is how the overlap error is avoided as this forces each instance of
+-- LiftReaderMonad to be unique by providing an f to CreateMapRM
+type family IsBaseCaseRM (n :: Type -> Type) (m :: Type -> Type) :: Bool where
+  IsBaseCaseRM n n = 'True
+  IsBaseCaseRM _ _ = 'False
 
-type family BaseCaseConstraint
-  f r (n :: Type -> Type) (t :: (Type -> Type) -> Type -> Type) (m :: Type -> Type)
-  :: Constraint | m -> n where
-  BaseCaseConstraint 'True r n t m = (m ~ n)
-  BaseCaseConstraint 'False r n t m = HasMonadReader r n m
-
-newtype (Monad n, MonadT t, Monad m) => Map (f :: Bool) r n t m = Map (forall a. n a -> t m a)
-runMap :: forall f r n t m a. (Monad n, MonadT t, Monad m) => Map f r n t m -> n a -> t m a
-runMap (Map f) = f
+-- This is a wrapper to store a function in respect to f
+newtype MapRM (f :: Bool) n t (m :: Type -> Type) = MapRM (forall a. n a -> t m a)
+runMapRM :: forall f n t m a. MapRM f n t m -> n a -> t m a
+runMapRM (MapRM f) = f
 
 class (Monad n, MonadT t, Monad m)
-  => UseMap f r n t m where
-  useMap :: Map f r n t m
+  => CreateMapRM f n t m where createMapRM :: MapRM f n t m
 
-instance (Monad n, MonadT t, Monad m, BaseCaseConstraint 'True r n t m)
-  => UseMap 'True r n t m where
-  useMap = Map lift
+-- The base case
+instance (Monad n, MonadT t, Monad m, n ~ m)
+  => CreateMapRM 'True n t m where createMapRM = MapRM lift
 
-instance (Monad n, MonadT t, Monad m, BaseCaseConstraint 'False r n t m)
-  => UseMap 'False r n t m where
-  useMap = Map $ lift . liftReader
+-- The recursive case
+instance (Monad n, MonadT t, Monad m, LiftReaderMonad n m)
+  => CreateMapRM 'False n t m where createMapRM = MapRM $ lift . liftReader
 
-instance (ReaderMonad r n, BaseCaseConstraint (IsBaseCase n m) r n t m, UseMap (IsBaseCase n m) r n t m) => HasMonadReader r n (t m) where
+-- CreateMapRM will always exist for some IsBaseCaseRM, this allows uniqueness
+-- of implementation despite CreateMapRM not enforcing said uniqueness, this
+-- basically uses the IsBaseCaseRM type family to determine which implementation
+-- to use
+instance CreateMapRM (IsBaseCaseRM n m) n t m => LiftReaderMonad n (t m) where
   liftReader :: n a -> t m a
-  liftReader = runMap @(IsBaseCase n m) @r useMap
+  liftReader = runMapRM @(IsBaseCaseRM n m) createMapRM

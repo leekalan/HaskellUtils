@@ -19,10 +19,6 @@ import Control.Monad.IO.Class
 testLiftReader :: MaybeT (MaybeT (ReaderT Int IO)) ()
 testLiftReader = liftReader readerThing
 
--- THIS ERRORS WHICH IS CORRECT BECAUSE IT CAN'T BE LIFTED
--- testReaderNotLift :: ReaderT Int IO ()
--- testReaderNotLift = liftReader readerThing
-
 testLiftReaderNest :: MaybeT (ReaderT Int (MaybeT (ReaderT Int IO))) ()
 testLiftReaderNest = do
   liftReader readerThing
