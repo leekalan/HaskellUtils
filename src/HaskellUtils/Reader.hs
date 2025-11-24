@@ -2,22 +2,9 @@
   FunctionalDependencies, FlexibleInstances,
   InstanceSigs, TypeFamilies, RankNTypes
 #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE UndecidableSuperClasses #-}
-{-# OPTIONS_GHC -Wno-loopy-superclass-solve #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE TypeFamilyDependencies #-}
 module HaskellUtils.Reader where
 
 import HaskellUtils.Transformer
-import Data.Kind
 
 class Monad m => ReaderMonad r m | m -> r where
   type ReaderRet m a
@@ -119,46 +106,10 @@ instance MonadTMap (ReaderT r) where
   mapT f (ReaderT ra) = ReaderT $ f . ra
 
 instance MonadE (Reader r) where
-  type ElevMonad (Reader r) = ReaderT r
+  type EMonad (Reader r) = ReaderT r
 
   elev :: Applicative n => Reader r a -> ReaderT r n a
   elev (Reader ra) = ReaderT $ \r -> pure $ ra r
 
-instance IsElevMonad (ReaderT r) where
-  type NonElevMonad (ReaderT r) = Reader r
-
-
-class (Monad n, Monad m) => LiftReaderMonad n m where
-  liftReader :: n a -> m a
-
--- This makes the boolean determined by n and m, creating injectivity
---
--- This is how the overlap error is avoided as this forces each instance of
--- LiftReaderMonad to be unique by providing an f to CreateMapRM
-type family IsBaseCaseRM (n :: Type -> Type) (m :: Type -> Type) :: Bool where
-  IsBaseCaseRM n n = 'True
-  IsBaseCaseRM _ _ = 'False
-
--- This is a wrapper to store a function in respect to f
-newtype MapRM (f :: Bool) n t (m :: Type -> Type) = MapRM (forall a. n a -> t m a)
-runMapRM :: forall f n t m a. MapRM f n t m -> n a -> t m a
-runMapRM (MapRM f) = f
-
-class (Monad n, MonadT t, Monad m)
-  => CreateMapRM f n t m where createMapRM :: MapRM f n t m
-
--- The base case
-instance (Monad n, MonadT t, Monad m, n ~ m)
-  => CreateMapRM 'True n t m where createMapRM = MapRM lift
-
--- The recursive case
-instance (Monad n, MonadT t, Monad m, LiftReaderMonad n m)
-  => CreateMapRM 'False n t m where createMapRM = MapRM $ lift . liftReader
-
--- CreateMapRM will always exist for some IsBaseCaseRM, this allows uniqueness
--- of implementation despite CreateMapRM not enforcing said uniqueness, this
--- basically uses the IsBaseCaseRM type family to determine which implementation
--- to use
-instance CreateMapRM (IsBaseCaseRM n m) n t m => LiftReaderMonad n (t m) where
-  liftReader :: n a -> t m a
-  liftReader = runMapRM @(IsBaseCaseRM n m) createMapRM
+instance UnMonadE (ReaderT r) where
+  type UnEMonad (ReaderT r) = Reader r

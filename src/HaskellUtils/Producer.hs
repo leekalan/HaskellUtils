@@ -44,9 +44,9 @@ asEmptyProducerT = EmptyProducerT
 
 instance (Monad m, MonadERun n, Alternative n, Producer p, ProducerResult p ~ ParContT x m)
   => Producer (EmptyProducerT n p m) where
-  type ProducerResult (EmptyProducerT n p m) = (ElevMonad n m)
+  type ProducerResult (EmptyProducerT n p m) = (EMonad n m)
 
-  produce :: EmptyProducerT n p m a -> ((ElevMonad n m) a, EmptyProducerT n p m a)
+  produce :: EmptyProducerT n p m a -> ((EMonad n m) a, EmptyProducerT n p m a)
   produce (EmptyProducerT p) =
     let (pc, p') = produce p
     in (runParEmptyT pc, EmptyProducerT p')

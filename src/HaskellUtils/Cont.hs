@@ -134,11 +134,11 @@ loopT = loopT
 loopFT :: a -> (a -> ContT r m a) -> m r
 loopFT = loopFT
 
--- loopState :: forall m r s a. StateMonad s m => ContT r m a -> m r
--- loopState ra = catchT recurseState
---   where
---     recurseState :: ContT r m r
---     recurseState = ra >> recurseState
+loopState :: forall m r s a. StateMonad s m => ContT r m a -> m r
+loopState ra = catchT recurseState
+  where
+    recurseState :: ContT r m r
+    recurseState = ra >> recurseState
 
 instance Functor (ContT r m) where
   fmap :: (a -> b) -> ContT r m a -> ContT r m b
@@ -172,14 +172,14 @@ asContT (Cont ra) = ContT ra
 asCont :: ContT r m a -> Cont (m r) a
 asCont (ContT ra) = Cont ra
 
-asContTNest :: (MonadERun m, Monad n) => ContT (m r) n a -> ContT r (ElevMonad m n) a
+asContTNest :: (MonadERun m, Monad n) => ContT (m r) n a -> ContT r (EMonad m n) a
 asContTNest (ContT ra) = ContT $ elevNest . ra . (runElev .)
 
-unContTNest :: (MonadERun m, Monad n) => ContT r (ElevMonad m n) a -> ContT (m r) n a
+unContTNest :: (MonadERun m, Monad n) => ContT r (EMonad m n) a -> ContT (m r) n a
 unContTNest (ContT ra) = ContT $ runElev . ra . (elevNest .)
 
-asContTFlip :: (MonadERun m, MonadERun n) => ContT (m r) n a -> ContT r (ElevMonad n m) a
+asContTFlip :: (MonadERun m, MonadERun n) => ContT (m r) n a -> ContT r (EMonad n m) a
 asContTFlip (ContT ra) = ContT $ elevFlip . ra . (runElevFlip .)
 
-unContTFlip :: (MonadERun m, MonadERun n) => ContT r (ElevMonad n m) a -> ContT (m r) n a
+unContTFlip :: (MonadERun m, MonadERun n) => ContT r (EMonad n m) a -> ContT (m r) n a
 unContTFlip (ContT ra) = ContT $ runElevFlip . ra . (elevFlip .)

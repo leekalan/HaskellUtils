@@ -1,5 +1,4 @@
 {-# LANGUAGE InstanceSigs, RankNTypes #-}
-{-# LANGUAGE AllowAmbiguousTypes #-}
 module HaskellUtils.DelimCont where
 
 import HaskellUtils.Cont
@@ -91,11 +90,11 @@ throwDelimEmptyT :: r -> DelimContT r m ()
 throwDelimEmptyT = throwDelimT
 
 runDelimThrowMT :: Monad m => DelimContT r m a -> forall n. MonadERun n
-  => forall b. (a -> (ElevMonad n m) b) -> ContT b (ElevMonad n m) r
+  => forall b. (a -> (EMonad n m) b) -> ContT b (EMonad n m) r
 runDelimThrowMT ra f = asContTNest $ runDelimThrowT ra $ runElev . f
 
 runDelimThrowEmptyT :: Monad m => DelimContT r m a
-  -> forall n. (MonadERun n, Alternative n) => (ElevMonad n m) r
+  -> forall n. (MonadERun n, Alternative n) => (EMonad n m) r
 runDelimThrowEmptyT r = catchT $ runDelimThrowMT r $ const $ elev empty
 
 instance Functor (DelimContT r m) where

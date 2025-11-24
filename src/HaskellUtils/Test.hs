@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE UndecidableInstances #-}
 module HaskellUtils.Test where
 
 import HaskellUtils.State
@@ -9,20 +8,22 @@ import HaskellUtils.Cont
 import HaskellUtils.Maybe
 import HaskellUtils.DelimCont
 import HaskellUtils.Any
-
-import Control.Monad
 import HaskellUtils.Queue
 import HaskellUtils.PartialCont
-import Control.Monad.IO.Class
 
+import Control.Monad
 
 testLiftReader :: MaybeT (MaybeT (ReaderT Int IO)) ()
-testLiftReader = liftReader readerThing
+testLiftReader = liftR readerThing
+
+readerNoLift :: Reader () ()
+readerNoLift = liftR readerNoLift
 
 testLiftReaderNest :: MaybeT (ReaderT Int (MaybeT (ReaderT Int IO))) ()
 testLiftReaderNest = do
-  liftReader readerThing
-  liftReader readerThingUpper
+  liftR readerThing
+  liftR readerThingUpper
+  liftR ioThing
 
 readerThing :: ReaderT Int IO ()
 readerThing = readerT $ const $ return ()
@@ -30,18 +31,21 @@ readerThing = readerT $ const $ return ()
 readerThingUpper :: ReaderT Int (MaybeT (ReaderT Int IO)) ()
 readerThingUpper = readerT $ const $ return ()
 
--- incrementRead :: MonadT r => (ReaderMonad Int (r s), StateMonad Int s) => r s ()
--- incrementRead = do
---   r <- ask'
---   lift $ modify' (+r)
+ioThing :: IO ()
+ioThing = return ()
 
--- incrementWith :: StateMonad Int s => Int -> s ()
--- incrementWith = runReaderT incrementRead
+incrementRead :: MonadT r => (ReaderMonad Int (r s), StateMonad Int s) => r s ()
+incrementRead = do
+  r <- ask
+  lift $ modify (+r)
 
--- testRead :: IO ()
--- testRead = do
---   let x = evalState (incrementWith 3)
---   print $ x 2
+incrementWith :: StateMonad Int s => Int -> s ()
+incrementWith = runReaderT incrementRead
+
+testRead :: IO ()
+testRead = do
+  let x = evalState (incrementWith 3)
+  print $ x 2
 
 
 testCont :: Int -> IO ()
@@ -131,25 +135,25 @@ printAnyIOTest = do
   printAnyIO arr
 
 
--- queueTest :: [Int] -> IO ()
--- queueTest xs = do
---   void $ runStateFT newQueue $ do
---     elev $ fillQueue xs
---     printQueue
---   where
---     fillQueue :: [Int] -> State (Queue Int) ()
---     fillQueue (y:ys) = do
---       enqueueState y
---       fillQueue ys
---     fillQueue [] = return ()
+queueTest :: [Int] -> IO ()
+queueTest xs = do
+  void $ runStateTF newQueue $ do
+    elev $ fillQueue xs
+    printQueue
+  where
+    fillQueue :: [Int] -> State (Queue Int) ()
+    fillQueue (y:ys) = do
+      enqueueState y
+      fillQueue ys
+    fillQueue [] = return ()
 
---     printQueue :: StateT (Queue Int) IO ()
---     printQueue = do
---       ps <- dequeueStateT
---       let x = runParEmpty ps
---       case x of
---         Just y -> do
---           liftIO $ print y
---           printQueue
---         Nothing -> return ()
+    printQueue :: StateT (Queue Int) IO ()
+    printQueue = do
+      ps <- dequeueStateT
+      let x = runParEmpty ps
+      case x of
+        Just y -> do
+          liftR $ print y
+          printQueue
+        Nothing -> return ()
 

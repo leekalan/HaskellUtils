@@ -142,6 +142,19 @@ instance Monad m => ReaderMonad s (StateT s m) where
   runReader' :: StateT s m a -> s -> m a
   runReader' = evalStateT
 
+instance Monad m => StateMonad s (StateT s m) where
+  state' :: (s -> m (a, s)) -> StateT s m a
+  state' = StateT
+
+  put :: s -> StateT s m ()
+  put s = StateT $ const $ return ((), s)
+
+  runState' :: StateT s m a -> s -> m (a, s)
+  runState' = runStateT
+
+  execState' :: StateT s m a -> s -> m s
+  execState' = execStateT
+
 instance Functor m => Functor (StateT s m) where
   fmap :: (a -> b) -> StateT s m a -> StateT s m b
   fmap f (StateT sa) = StateT $ \s ->
@@ -175,10 +188,10 @@ instance MonadTMap (StateT s) where
   mapT f (StateT ra) = StateT $ f . ra
 
 instance MonadE (State s) where
-  type ElevMonad (State s) = StateT s
+  type EMonad (State s) = StateT s
 
   elev :: Applicative m => State s a -> StateT s m a
   elev (State sa) = StateT $ \s -> pure $ sa s
 
-instance IsElevMonad (StateT s) where
-  type NonElevMonad (StateT s) = State s
+instance UnMonadE (StateT s) where
+  type UnEMonad (StateT s) = State s

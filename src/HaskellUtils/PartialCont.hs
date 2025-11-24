@@ -7,10 +7,10 @@ import HaskellUtils.Transformer
 import Control.Applicative
 
 type ParBlock r = ParCont r r
--- type ParBlockT m r = ParContT r m r
+type ParBlockT m r = ParContT r m r
 
 type ParSeg = ParCont ()
--- type ParSegT m r = ParContT r m ()
+type ParSegT m r = ParContT r m ()
 
 
 newtype ParCont s a = ParCont { _runParCont :: forall x. (s -> x) -> Cont x a }
@@ -58,11 +58,11 @@ runParT' :: (s -> m x) -> ParContT s m a -> ContT x m a
 runParT' = flip _runParContT
 
 runParMT :: Monad m => ParContT s m a -> forall n. MonadERun n
-  => forall x. (s -> (ElevMonad n m) x) -> ContT x (ElevMonad n m) a
+  => forall x. (s -> (EMonad n m) x) -> ContT x (EMonad n m) a
 runParMT ra f = asContTNest $ runParT ra $ runElev . f
 
 runParEmptyT :: Monad m => ParContT s m a
-  -> forall n. (MonadERun n, Alternative n) => (ElevMonad n m) a
+  -> forall n. (MonadERun n, Alternative n) => (EMonad n m) a
 runParEmptyT ra = catchT $ runParMT ra $ const $ elev empty
 
 instance Functor (ParContT s m) where

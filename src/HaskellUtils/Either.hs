@@ -89,16 +89,16 @@ instance MonadTMap (EitherT e) where
 liftLeft :: Monad m => m e -> EitherT e m a
 liftLeft e = EitherT $ Left <$> e
 
-instance IsElevMonad (EitherT e) where
-  type NonElevMonad (EitherT e) = Either e
+instance UnMonadE (EitherT e) where
+  type UnEMonad (EitherT e) = Either e
 
 instance MonadE (Either e) where
-  type ElevMonad (Either e) = EitherT e
+  type EMonad (Either e) = EitherT e
 
   elev :: Monad n => Either e a -> EitherT e n a
   elev a = EitherT $ pure a
 
 instance MonadERun (Either e) where
-  runElev :: ElevMonad (Either e) n a -> n (Either e a)
+  runElev :: EMonad (Either e) n a -> n (Either e a)
   runElev = runEitherT
   

@@ -90,13 +90,13 @@ liftNothing m = MaybeT $ do
   return Nothing
 
 instance MonadE Maybe where
-  type ElevMonad Maybe = MaybeT
+  type EMonad Maybe = MaybeT
 
   elev :: Monad n => Maybe a -> MaybeT n a
   elev ma = MaybeT $ pure ma
 
-instance IsElevMonad MaybeT where
-  type NonElevMonad MaybeT = Maybe
+instance UnMonadE MaybeT where
+  type UnEMonad MaybeT = Maybe
 
 instance MonadERun Maybe where
   runElev :: MaybeT n a -> n (Maybe a)

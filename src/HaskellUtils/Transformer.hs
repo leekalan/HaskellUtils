@@ -1,15 +1,16 @@
 {-# LANGUAGE
-  TypeFamilies, TypeOperators, RankNTypes,
-  QuantifiedConstraints, FlexibleContexts
+  TypeFamilies, TypeOperators, FlexibleInstances, UndecidableInstances,
+  QuantifiedConstraints, FlexibleContexts, MultiParamTypeClasses, RankNTypes,
+  TypeApplications, ScopedTypeVariables, InstanceSigs, AllowAmbiguousTypes
 #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE InstanceSigs #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# OPTIONS_GHC -Wno-loopy-superclass-solve #-}
 module HaskellUtils.Transformer where
   
 import Data.Kind
-import Control.Monad.IO.Class
+
+data Base
+data Recurse
+
 
 class MonadRet a m where
   liftRet :: a -> m
@@ -30,10 +31,6 @@ instance (Monad m, MonadT t, MonadRet ar (m a)) => MonadRet ar (t m a) where
 class (forall m. Monad m => Monad (t m)) => MonadT t where
   lift :: Monad m => m a -> t m a
 
-instance (MonadIO m, MonadT t) => MonadIO (t m) where
-  liftIO :: IO a -> t m a
-  liftIO = lift . liftIO
-
 lift2 :: (Monad m, MonadT t0, MonadT t1) => m a -> t0 (t1 m) a
 lift2 = lift . lift
 
@@ -52,35 +49,69 @@ lift6 = lift . lift5
 lift7 :: (Monad m, MonadT t0, MonadT t1, MonadT t2, MonadT t3, MonadT t4, MonadT t5, MonadT t6) => m a -> t0 (t1 (t2 (t3 (t4 (t5 (t6 m)))))) a
 lift7 = lift . lift6
 
+
+class (Monad n, Monad m) => LiftMonad n m where
+  liftR :: n a -> m a
+
+type family LiftCase (n :: Type -> Type) (m :: Type -> Type) where
+  LiftCase n n = Base
+  LiftCase _ _ = Recurse
+
+class (Monad n, Monad m) => LiftMonad' c n m where
+  liftR' :: n a -> m a
+
+-- Lift when in base case
+instance (Monad m)
+  => LiftMonad' Base m m where
+  liftR' :: m a -> m a
+  liftR' = id
+
+-- Recurse when in recurse case
+instance (Monad n, Monad m, LiftMonad n m)
+  => LiftMonad' Recurse n m where
+  liftR' :: n a -> m a
+  liftR' = liftR
+
+-- Base case
+instance Monad n => LiftMonad n n where
+  liftR :: Monad n => n a -> n a
+  liftR = id
+
+-- Index the implementation with the case
+instance (MonadT t, LiftMonad' (LiftCase n m) n m) => LiftMonad n (t m) where
+  liftR :: n a -> t m a
+  liftR = lift . liftR' @(LiftCase n m)
+
+
 class MonadT t => MonadTMap t where
   mapT :: (Monad m, Monad n) => (forall x. m x -> n x) -> t m a -> t n a
 
-class (Monad m, MonadT (ElevMonad m), NonElevMonad (ElevMonad m) ~ m) => MonadE m where
-  type ElevMonad m :: (Type -> Type) -> Type -> Type
+class (Monad m, MonadT (EMonad m), UnEMonad (EMonad m) ~ m) => MonadE m where
+  type EMonad m :: (Type -> Type) -> Type -> Type
 
-  elev :: Monad n => m a -> ElevMonad m n a
+  elev :: Monad n => m a -> EMonad m n a
 
-  elevNest :: Monad n => n (m a) -> ElevMonad m n a
+  elevNest :: Monad n => n (m a) -> EMonad m n a
   elevNest mna = do
     na <- lift mna
     elev na
 
-  elevFlip :: Monad n => m (n a) -> ElevMonad m n a
+  elevFlip :: Monad n => m (n a) -> EMonad m n a
   elevFlip nma = do
     ma <- elev nma
     lift ma
 
-class (MonadT t, MonadE (NonElevMonad t), ElevMonad (NonElevMonad t) ~ t) => IsElevMonad t where
-  type NonElevMonad t :: (Type -> Type)
+class (MonadT t, MonadE (UnEMonad t), EMonad (UnEMonad t) ~ t) => UnMonadE t where
+  type UnEMonad t :: Type -> Type
 
 class MonadE m => MonadERun m where
-  runElev :: ElevMonad m n a -> n (m a)
+  runElev :: EMonad m n a -> n (m a)
 
-  runElevFlip :: MonadERun n => ElevMonad m n a -> m (n a)
+  runElevFlip :: MonadERun n => EMonad m n a -> m (n a)
   runElevFlip mna = runElev $ monadFlip mna
 
   monadNestFlip :: Monad n => m (n a) -> n (m a)
   monadNestFlip nma = runElev $ elevFlip nma
 
-  monadFlip :: MonadE n => ElevMonad m n a -> ElevMonad n m a
+  monadFlip :: MonadE n => EMonad m n a -> EMonad n m a
   monadFlip mna = elevFlip $ runElev mna

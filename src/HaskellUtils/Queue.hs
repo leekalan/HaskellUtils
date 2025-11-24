@@ -44,37 +44,37 @@ dequeue q = first delimAsPar $ dequeueDelim q
 drainQueue :: Queue a -> [a]
 drainQueue (Q as bs) = as ++ reverse bs
 
--- enqueueState' :: forall m a. StateMonad (Queue a) m => a -> m ()
--- enqueueState' = modify' . enqueue
+enqueueState' :: forall m a. StateMonad (Queue a) m => a -> m ()
+enqueueState' = modify . enqueue
 
--- enqueueState :: a -> State (Queue a) ()
--- enqueueState = enqueueState'
+enqueueState :: a -> State (Queue a) ()
+enqueueState = enqueueState'
 
--- enqueueStateT :: Monad m => a -> StateT (Queue a) m ()
--- enqueueStateT = enqueueState'
+enqueueStateT :: Monad m => a -> StateT (Queue a) m ()
+enqueueStateT = enqueueState'
 
--- dequeueState' :: forall m a. StateMonad (Queue a) m => m (ParSeg a)
--- dequeueState' = do
---   (a, q) <- fmap dequeue get'
---   put' q; return a
+dequeueState' :: forall m a. StateMonad (Queue a) m => m (ParSeg a)
+dequeueState' = do
+  (a, q) <- fmap dequeue get
+  put q; return a
 
--- dequeueState :: State (Queue a) (ParSeg a)
--- dequeueState = dequeueState'
+dequeueState :: State (Queue a) (ParSeg a)
+dequeueState = dequeueState'
 
--- dequeueStateT :: Monad m => StateT (Queue a) m (ParSeg a)
--- dequeueStateT = dequeueState'
+dequeueStateT :: Monad m => StateT (Queue a) m (ParSeg a)
+dequeueStateT = dequeueState'
 
--- drainQueueState' :: forall m a. StateMonad (Queue a) m => m [a]
--- drainQueueState' = do
---   q <- get'
---   put' newQueue
---   return $ drainQueue q
+drainQueueState' :: forall m a. StateMonad (Queue a) m => m [a]
+drainQueueState' = do
+  q <- get
+  put newQueue
+  return $ drainQueue q
 
--- drainQueueState :: State (Queue a) [a]
--- drainQueueState = drainQueueState'
+drainQueueState :: State (Queue a) [a]
+drainQueueState = drainQueueState'
 
--- drainQueueStateT :: Monad m => StateT (Queue a) m [a]
--- drainQueueStateT = drainQueueState'
+drainQueueStateT :: Monad m => StateT (Queue a) m [a]
+drainQueueStateT = drainQueueState'
 
 instance Producer Queue where
   type ProducerResult Queue = ParSeg
