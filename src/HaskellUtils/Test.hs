@@ -1,4 +1,8 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, MonoLocalBinds #-}
+{-# LANGUAGE TypeApplications, ScopedTypeVariables #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ConstraintKinds #-}
 module HaskellUtils.Test where
 
 import HaskellUtils.State
@@ -34,17 +38,34 @@ readerThingUpper = elev nop
 ioThing :: IO ()
 ioThing = nop
 
-incrementRead :: MonadT r => (ReaderMonad Int (r s), StateMonad Int s) => r s ()
-incrementRead = do
-  r <- ask
-  lift $ modify (+r)
+simpleRead :: forall rt m. (ReaderMonad Int (LiftTrans rt m), LiftMonadT m rt)
+  => LiftTrans rt m Int
+simpleRead = ask
 
-incrementWith :: StateMonad Int s => Int -> s ()
-incrementWith = runReaderT incrementRead
+simpleReadWith :: forall m. (Monad m, LiftMonadT m (ReaderT Int)) => Int -> m Int
+simpleReadWith = runReaderT $ simpleRead @(ReaderT Int) @m
+
+testSimpleRead :: Int -> IO ()
+testSimpleRead v = do
+  x <- simpleReadWith @IO v
+  print x
+
+incrementRead :: forall mt rt s.
+  LiftComposed mt rt s
+  => (ReaderMonad Int (LiftTrans rt s), StateMonad Int s)
+  => LiftTrans2 mt rt s ()
+incrementRead = do
+  r <- liftT @(LiftTrans rt s) @mt $ ask
+  liftT @s @(ComposeT mt rt) $ modify (+r)
+
+incrementWith :: forall mt s. StateMonad Int s
+  => LiftMonadT s mt
+  => Int -> LiftTrans mt s ()
+incrementWith = runReaderT $ incrementRead @IdentityLift @(ComposeT (ReaderT _) mt) @s
 
 testRead :: IO ()
 testRead = do
-  let x = evalState (incrementWith 3)
+  let x = evalState $ catchT $ incrementWith @(ContT ()) @(State Int) 3
   print $ x 2
 
 
